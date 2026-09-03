@@ -1,0 +1,10 @@
+absl-py==2.2.2
+numpy==1.26.4
+pandas==2.2.3
+scikit-learn==1.6.1
+tqdm==4.67.1
+opencv-contrib-python==4.11.0.86
+mediapipe==0.10.9
+tensorflow==2.19.0
+openai==1.82.0
+python-dotenv==1.1.0
