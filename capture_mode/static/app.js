@@ -3,6 +3,8 @@ const video = document.getElementById('webcam');
 const overlay = document.getElementById('overlay');
 const messageInput = document.getElementById('message');
 const startBtn = document.getElementById('start-btn');
+const captureDot = document.getElementById('capture-dot');
+const captureText = document.getElementById('capture-text');
 
 let stream = null;
 let ws = null;
@@ -20,7 +22,7 @@ const HAND_CONNECTIONS = [
   [0, 17]
 ];
 
-// Il video è mirrorato via CSS (transform: scaleX(-1)) per un effetto
+// Il video e' mirrorato via CSS (transform: scaleX(-1)) per un effetto
 // "specchio" naturale. Il server calcola i landmark sul frame NON mirrorato
 // (quello effettivamente inviato), quindi qui capovolgiamo la coordinata x
 // per farli combaciare con quello che l'utente vede a video.
@@ -58,6 +60,11 @@ function drawLandmarks(landmarks) {
   drawHand(landmarks.right, '#5eead4');
 }
 
+function setCapturing(capturing) {
+  captureDot.classList.toggle('active', capturing);
+  captureText.textContent = capturing ? 'Capturing' : 'Not Capturing';
+}
+
 function resizeOverlay() {
   if (!video.videoWidth) return;
   overlay.width = video.videoWidth;
@@ -68,7 +75,7 @@ video.addEventListener('loadeddata', resizeOverlay);
 
 function connectWebSocket() {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const host = window.location.host || 'localhost:8000';
+  const host = window.location.host || 'localhost:8001';
   const lesson = new URLSearchParams(window.location.search).get('lesson');
   const wsUrl = lesson ? `${protocol}//${host}/ws?lesson=${encodeURIComponent(lesson)}` : `${protocol}//${host}/ws`;
   ws = new WebSocket(wsUrl);
@@ -85,13 +92,15 @@ function connectWebSocket() {
       return;
     }
 
-    // Messaggio veloce (ogni frame): solo skeleton, indipendente dalla
-    // classificazione (che arriva più di rado, in messaggi separati).
-    if (msg.type === 'landmarks') {
+    // Messaggio veloce (ogni frame): skeleton + stato Capturing/Not Capturing,
+    // nessuna chiamata al modello coinvolta.
+    if (msg.type === 'status') {
       drawLandmarks(msg.landmarks);
+      setCapturing(msg.capturing);
       return;
     }
 
+    // Messaggio raro (una volta per gesto isolato catturato).
     if (msg.type === 'lesson') {
       if (msg.completed) {
         messageInput.value = 'Lesson complete!';
@@ -99,13 +108,14 @@ function connectWebSocket() {
       }
       const step = `Step ${msg.step_index + 1}/${msg.total_steps}`;
       const target = `Target: ${msg.target_display}`;
-      const accuracy = `Accuracy: ${(msg.accuracy * 100).toFixed(0)}%`;
-      const hold = `Hold: ${(msg.hold_progress * 100).toFixed(0)}%`;
-      messageInput.value = `${step} — ${target} — ${accuracy} — ${hold}`;
+      const result = msg.correct
+        ? `Correct! (recognized: ${msg.last_gloss})`
+        : `Try again — recognized: ${msg.last_gloss}`;
+      messageInput.value = `${step} — ${target} — ${result}`;
       return;
     }
 
-    // type === 'recognition' (modalità libera)
+    // type === 'recognition' (modalita' libera)
     const { gloss, confidence } = msg;
     messageInput.value = `Detected sign: ${gloss} (conf: ${(confidence * 100).toFixed(0)}%)`;
   };
@@ -140,7 +150,6 @@ async function startCamera() {
 
     connectWebSocket();
 
-    // Invia un frame ogni X ms (es. 10 fps)
     const fps = 20;
     const interval = 1000 / fps;
 
@@ -154,8 +163,6 @@ async function startCamera() {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Frame binario diretto (niente base64/JSON): più leggero e più veloce
-      // da codificare/decodificare su entrambi i lati.
       canvas.toBlob((blob) => {
         if (blob && ws.readyState === WebSocket.OPEN) {
           ws.send(blob);

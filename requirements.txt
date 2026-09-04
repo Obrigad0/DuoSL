@@ -1,5 +1,4 @@
 fastapi
-uvicorn
 uvicorn[standard]
 absl-py==2.2.2
 numpy==1.26.4

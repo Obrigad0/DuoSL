@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>DuoSL Demo (capture mode)</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="icon" href="/static/favicon.ico" />
+</head>
+<body>
+  <div class="app-container">
+    <header>
+      <h1>DuoSL – Sign Language Practice <span class="badge">capture mode</span></h1>
+      <p>Show your sign in front of the camera</p>
+    </header>
+
+    <main class="main-content">
+      <div class="camera-wrapper">
+        <video id="webcam" autoplay playsinline></video>
+        <canvas id="overlay"></canvas>
+        <div class="capture-indicator">
+          <span id="capture-dot"></span>
+          <span id="capture-text">Not Capturing</span>
+        </div>
+      </div>
+
+      <div class="info-panel">
+        <label for="message">Message / Feedback:</label>
+        <input
+          type="text"
+          id="message"
+          placeholder="Detected sign will appear here..."
+          readonly
+        />
+        <button id="start-btn">Start Camera</button>
+      </div>
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
