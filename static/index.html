@@ -6,6 +6,8 @@
   <link rel="stylesheet" href="/static/style.css" />
   <link rel="icon" href="/static/favicon.ico" />
 </head>
+
+
 <body>
   <div class="app-container">
     <header>
@@ -14,24 +16,33 @@
     </header>
 
     <main class="main-content">
-      <div class="camera-wrapper">
-        <video id="webcam" autoplay playsinline></video>
-        <canvas id="overlay"></canvas>
+      <div class="left-panel">
+        <div class="camera-wrapper">
+          <video id="webcam" autoplay playsinline></video>
+          <canvas id="overlay"></canvas>
+        </div>
       </div>
 
-      <div class="info-panel">
-        <label for="message">Message / Feedback:</label>
-        <input
-          type="text"
-          id="message"
-          placeholder="Detected sign will appear here..."
-          readonly
-        />
-        <button id="start-btn">Start Camera</button>
+      <div class="right-panel">
+        <h2>Detected signs</h2>
+        <div id="signs-list" class="signs-list"></div>
+
+        <div class="controls">
+          <label for="message">Last detection:</label>
+          <input
+            type="text"
+            id="message"
+            placeholder="Waiting for detection..."
+            readonly
+          />
+          <button id="start-btn">Start Camera</button>
+          <button id="clear-btn" class="secondary">Cancella</button>
+        </div>
       </div>
     </main>
   </div>
 
   <script src="/static/app.js"></script>
 </body>
+
 </html>

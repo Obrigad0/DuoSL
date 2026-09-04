@@ -1,12 +1,18 @@
+// app.js
 
 const video = document.getElementById('webcam');
 const overlay = document.getElementById('overlay');
 const messageInput = document.getElementById('message');
 const startBtn = document.getElementById('start-btn');
+const clearBtn = document.getElementById('clear-btn');
+const signsListEl = document.getElementById('signs-list');
 
 let stream = null;
 let ws = null;
 let sendingInterval = null;
+
+// Lista dei segni rilevati
+let detectedSigns = [];
 
 function resizeOverlay() {
   if (!video.videoWidth) return;
@@ -17,11 +23,9 @@ function resizeOverlay() {
 video.addEventListener('loadeddata', resizeOverlay);
 
 function connectWebSocket() {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const host = window.location.host || 'localhost:8000';
-  const lesson = new URLSearchParams(window.location.search).get('lesson');
-  const wsUrl = lesson ? `${protocol}//${host}/ws?lesson=${encodeURIComponent(lesson)}` : `${protocol}//${host}/ws`;
-  ws = new WebSocket(wsUrl);
+  const protocol = 'ws:';
+  const host = 'localhost:8000';
+  ws = new WebSocket(`${protocol}//${host}/ws`);
 
   ws.onopen = () => {
     console.log('WebSocket connected');
@@ -34,37 +38,48 @@ function connectWebSocket() {
       messageInput.value = `Error: ${msg.error}`;
       return;
     }
-
-    if (msg.mode === 'lesson') {
-      if (msg.completed) {
-        messageInput.value = 'Lesson complete!';
-        return;
-      }
-      const step = `Step ${msg.step_index + 1}/${msg.total_steps}`;
-      const target = `Target: ${msg.target_display}`;
-      const accuracy = `Accuracy: ${(msg.accuracy * 100).toFixed(0)}%`;
-      const hold = `Hold: ${(msg.hold_progress * 100).toFixed(0)}%`;
-      messageInput.value = `${step} — ${target} — ${accuracy} — ${hold}`;
-      return;
-    }
-
     const { gloss, confidence } = msg;
+
     if (gloss) {
-      messageInput.value = `Detected sign: ${gloss} (conf: ${confidence.toFixed(2)})`;
+      messageInput.value = `Detected: ${gloss} (conf: ${confidence.toFixed(2)})`;
+      addSign(gloss);
     } else {
       messageInput.value = `No confident sign (conf: ${confidence.toFixed(2)})`;
     }
   };
 
-  ws.onclose = (event) => {
+  ws.onclose = () => {
     console.log('WebSocket closed');
-    messageInput.value = event.reason ? `Disconnected: ${event.reason}` : 'Disconnected from model server.';
+    messageInput.value = 'Disconnected from model server.';
   };
 
   ws.onerror = (err) => {
     console.error('WebSocket error:', err);
     messageInput.value = 'WebSocket error.';
   };
+}
+
+function addSign(gloss) {
+  detectedSigns.push(gloss);
+  renderSignsList();
+}
+
+function renderSignsList() {
+  signsListEl.innerHTML = '';
+  detectedSigns.forEach((sign) => {
+    const div = document.createElement('div');
+    div.className = 'sign-item';
+    div.textContent = sign;
+    signsListEl.appendChild(div);
+  });
+  // scroll to bottom
+  signsListEl.scrollTop = signsListEl.scrollHeight;
+}
+
+function clearSigns() {
+  detectedSigns = [];
+  renderSignsList();
+  messageInput.value = '';
 }
 
 async function startCamera() {
@@ -86,7 +101,6 @@ async function startCamera() {
 
     connectWebSocket();
 
-    // Invia un frame ogni X ms (es. 10 fps)
     const fps = 20;
     const interval = 1000 / fps;
 
@@ -115,3 +129,4 @@ async function startCamera() {
 }
 
 startBtn.addEventListener('click', startCamera);
+clearBtn.addEventListener('click', clearSigns);
