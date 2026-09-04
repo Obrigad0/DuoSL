@@ -1,0 +1,9 @@
+{
+  "id": "test_lesson",
+  "name": "Test Lesson",
+  "steps": [
+    { "gloss": "HELLO" },
+    { "gloss": "HOW1", "display_text": "HOW" },
+    { "gloss": "FINE1", "display_text": "FINE" }
+  ]
+}

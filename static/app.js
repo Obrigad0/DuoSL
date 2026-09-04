@@ -20,7 +20,9 @@ video.addEventListener('loadeddata', resizeOverlay);
 function connectWebSocket() {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const host = window.location.host || 'localhost:8000';
-  ws = new WebSocket(`${protocol}//${host}/ws`);
+  const lesson = new URLSearchParams(window.location.search).get('lesson');
+  const wsUrl = lesson ? `${protocol}//${host}/ws?lesson=${encodeURIComponent(lesson)}` : `${protocol}//${host}/ws`;
+  ws = new WebSocket(wsUrl);
 
   ws.onopen = () => {
     console.log('WebSocket connected');
@@ -33,6 +35,20 @@ function connectWebSocket() {
       messageInput.value = `Error: ${msg.error}`;
       return;
     }
+
+    if (msg.mode === 'lesson') {
+      if (msg.completed) {
+        messageInput.value = 'Lesson complete!';
+        return;
+      }
+      const step = `Step ${msg.step_index + 1}/${msg.total_steps}`;
+      const target = `Target: ${msg.target_display}`;
+      const accuracy = `Accuracy: ${(msg.accuracy * 100).toFixed(0)}%`;
+      const hold = `Hold: ${(msg.hold_progress * 100).toFixed(0)}%`;
+      messageInput.value = `${step} — ${target} — ${accuracy} — ${hold}`;
+      return;
+    }
+
     const { gloss, confidence } = msg;
     if (gloss) {
       messageInput.value = `Detected sign: ${gloss} (conf: ${confidence.toFixed(2)})`;
@@ -41,9 +57,9 @@ function connectWebSocket() {
     }
   };
 
-  ws.onclose = () => {
+  ws.onclose = (event) => {
     console.log('WebSocket closed');
-    messageInput.value = 'Disconnected from model server.';
+    messageInput.value = event.reason ? `Disconnected: ${event.reason}` : 'Disconnected from model server.';
   };
 
   ws.onerror = (err) => {

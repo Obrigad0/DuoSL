@@ -16,6 +16,7 @@ import tensorflow as tf
 # Import del tuo modulo esistente
 from utils import live_translation
 from utils import preprocessing_split as preprocessing
+from utils import lesson_engine
 
 app = FastAPI()
 
@@ -33,6 +34,7 @@ model = tf.keras.models.load_model(MODEL_PATH)
 with open(ENCODER_PATH, 'r', encoding='utf-8') as f:
     gloss_dict = json.load(f)
     encoder = {k: v for k, v in gloss_dict.items()}
+    gloss_to_index = {gloss: int(idx) for idx, gloss in encoder.items()}
 
 # Configura MediaPipe Holistic (stesso setup di start_live_feed)
 mp_drawing = mp.solutions.drawing_utils
@@ -47,12 +49,12 @@ holistic = mp_holistic.Holistic(
     min_tracking_confidence=0.9
 )
 
-def predict_sign_from_frame(frame_bgr, threshold: float = 1.2, complexity: int = 1):
+def get_prediction_vector(frame_bgr):
     """
-    Prende un frame BGR (numpy array) e restituisce:
-      - predicted_gloss: str o None
-      - confidence: float
-    Usa la stessa logica di start_live_feed, ma semplificata per un singolo frame/sequenza.
+    Prende un frame BGR (numpy array) e restituisce il vettore di probabilità
+    grezzo del modello (shape (num_classi,)), senza argmax/soglia/lookup.
+    Condiviso sia dal path di riconoscimento libero che dal motore lezione,
+    così il modello viene interrogato una sola volta per frame in entrambi i casi.
     """
     # Per questa demo, facciamo inference su una “mini-sequenza” di 1 frame.
     # In una versione più avanzata, potresti mantenere uno storico di frame
@@ -65,22 +67,29 @@ def predict_sign_from_frame(frame_bgr, threshold: float = 1.2, complexity: int =
     landmarks = live_translation.extract_landmarks(results)        # shape (N, 2)
     data_processed = live_translation.preprocess(landmarks)        # normalizzazione
 
-    # 2) Prepara input per il modello
-    # Il modello si aspetta: (batch, T, features) con T fisso e features = N*2 appiattito
-    # In start_live_feed usano 30 frame e padding. Qui facciamo una versione semplificata:
-    #   - consideriamo 1 frame
-    #   - applichiamo pad_video per arrivare a T=30 (come fai in handle_capture_logic)
+    # 2) Prepara input per il modello: (batch, T, features), T=150 (pad_video),
+    # features = N*2 appiattito. Il modello si aspetta esattamente (1, 150, 172).
     landmark_array = data_processed[np.newaxis, ...]  # (1, N, 2)
-    padded_array = preprocessing.pad_video(landmark_array)  # (30, N, 2)
-    reshape_array = padded_array.reshape(padded_array.shape[0], -1)  # (30, N*2)
-    model_input = np.expand_dims(reshape_array, axis=0)  # (1, 30, N*2)
+    padded_array = preprocessing.pad_video(landmark_array)  # (150, N, 2)
+    reshape_array = padded_array.reshape(padded_array.shape[0], -1)  # (150, N*2)
+    model_input = np.expand_dims(reshape_array, axis=0)  # (1, 150, N*2)
 
     # 3) Inference
     prediction = model.predict(model_input, verbose=0)
-    predicted_index = int(np.argmax(prediction[0]))
-    confidence = float(prediction[0, predicted_index])
+    return prediction[0]
 
-    # 4) Decodifica gloss
+
+def predict_sign_from_frame(frame_bgr, threshold: float = 1.2, complexity: int = 1):
+    """
+    Prende un frame BGR (numpy array) e restituisce:
+      - predicted_gloss: str o None
+      - confidence: float
+    Usa la stessa logica di start_live_feed, ma semplificata per un singolo frame/sequenza.
+    """
+    prediction = get_prediction_vector(frame_bgr)
+    predicted_index = int(np.argmax(prediction))
+    confidence = float(prediction[predicted_index])
+
     if confidence >= threshold:
         gloss = encoder.get(str(predicted_index), "UNKNOWN")
     else:
@@ -97,6 +106,17 @@ async def get_index():
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    lesson_name = websocket.query_params.get("lesson")
+    session = None
+
+    if lesson_name:
+        try:
+            lesson = lesson_engine.load_lesson(lesson_name, gloss_to_index)
+            session = lesson_engine.LessonSession(lesson, gloss_to_index)
+        except lesson_engine.LessonLoadError as e:
+            await websocket.close(code=1008, reason=str(e))
+            return
+
     await websocket.accept()
 
     try:
@@ -116,14 +136,30 @@ async def websocket_endpoint(websocket: WebSocket):
                 await websocket.send_json({"error": "Failed to decode image"})
                 continue
 
-            # Inference
-            gloss, conf = predict_sign_from_frame(frame, threshold=1.2, complexity=1)
-
-            # Risposta
-            await websocket.send_json({
-                "gloss": gloss,
-                "confidence": conf
-            })
+            if session is not None:
+                # Modalità lezione: confronta solo con il segno target corrente,
+                # nessun argmax globale sul vettore di predizione.
+                prediction = get_prediction_vector(frame)
+                result = session.process_prediction(prediction)
+                await websocket.send_json({
+                    "mode": "lesson",
+                    "lesson_id": session.lesson.id,
+                    "step_index": result.step_index,
+                    "total_steps": result.total_steps,
+                    "target_gloss": result.target_gloss,
+                    "target_display": result.target_display,
+                    "accuracy": result.accuracy,
+                    "hold_progress": result.hold_progress,
+                    "advanced": result.advanced,
+                    "completed": result.completed,
+                })
+            else:
+                # Modalità libera (legacy): riconoscimento del segno più probabile.
+                gloss, conf = predict_sign_from_frame(frame, threshold=1.2, complexity=1)
+                await websocket.send_json({
+                    "gloss": gloss,
+                    "confidence": conf
+                })
 
     except WebSocketDisconnect:
         print("Client disconnected")

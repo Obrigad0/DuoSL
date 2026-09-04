@@ -28,7 +28,7 @@ header {
 header h1 {
   font-size: 2rem;
   margin-bottom: 8px;
-  color: #60a5fa;
+  color: #a7f3d0;
 }
 
 header p {
@@ -91,20 +91,20 @@ header p {
 }
 
 #message:focus {
-  border-color: #60a5fa;
+  border-color: #86efac;
 }
 
 #start-btn {
   padding: 10px 16px;
   border: none;
   border-radius: 10px;
-  background: #2563eb;
-  color: white;
+  background: #86efac;
+  color: #14532d;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s;
 }
 
 #start-btn:hover {
-  background: #1d4ed8;
+  background: #6ee7a5;
 }
