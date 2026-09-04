@@ -1,4 +1,3 @@
-// app.js
 
 const video = document.getElementById('webcam');
 const overlay = document.getElementById('overlay');
@@ -88,7 +87,7 @@ async function startCamera() {
     connectWebSocket();
 
     // Invia un frame ogni X ms (es. 10 fps)
-    const fps = 10;
+    const fps = 20;
     const interval = 1000 / fps;
 
     sendingInterval = setInterval(() => {

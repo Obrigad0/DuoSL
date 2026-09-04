@@ -1,6 +1,3 @@
-# server.py
-# uvicorn server:app --reload --host 0.0.0.0 --port 8000
-
 import os
 import json
 import base64
@@ -13,15 +10,14 @@ import mediapipe as mp
 import numpy as np
 import tensorflow as tf
 
-# Import del tuo modulo esistente
+
 from utils import live_translation
 from utils import preprocessing_split as preprocessing
 from utils import lesson_engine
 
 app = FastAPI()
 
-# Caricamento client (non strettamente necessario per la sola inference,
-# ma lo teniamo per coerenza col tuo codice)
+# Caricamento client
 client = live_translation.get_client('.env')
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -29,20 +25,19 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 MODEL_PATH = 'models/best_model200.keras'
 ENCODER_PATH = 'models/index_to_gloss_200.json'
 
-# Carica modello ed encoder una volta all’avvio
+# Carica modello ed encoder
 model = tf.keras.models.load_model(MODEL_PATH)
 with open(ENCODER_PATH, 'r', encoding='utf-8') as f:
     gloss_dict = json.load(f)
     encoder = {k: v for k, v in gloss_dict.items()}
     gloss_to_index = {gloss: int(idx) for idx, gloss in encoder.items()}
 
-# Configura MediaPipe Holistic (stesso setup di start_live_feed)
 mp_drawing = mp.solutions.drawing_utils
 mp_holistic = mp.solutions.holistic
 
 holistic = mp_holistic.Holistic(
     static_image_mode=False,
-    model_complexity=1,          # puoi cambiarlo se vuoi
+    model_complexity=1,    
     enable_segmentation=False,
     refine_face_landmarks=False,
     min_detection_confidence=0.6,
@@ -57,8 +52,6 @@ def get_prediction_vector(frame_bgr):
     così il modello viene interrogato una sola volta per frame in entrambi i casi.
     """
     # Per questa demo, facciamo inference su una “mini-sequenza” di 1 frame.
-    # In una versione più avanzata, potresti mantenere uno storico di frame
-    # lato server (es. ultimi 30) e fare inference solo quando il movimento supera threshold.
 
     # 1) Estrai landmark
     image_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
