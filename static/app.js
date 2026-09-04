@@ -1,62 +1,18 @@
+// app.js
 
 const video = document.getElementById('webcam');
 const overlay = document.getElementById('overlay');
 const messageInput = document.getElementById('message');
 const startBtn = document.getElementById('start-btn');
+const clearBtn = document.getElementById('clear-btn');
+const signsListEl = document.getElementById('signs-list');
 
 let stream = null;
 let ws = null;
 let sendingInterval = null;
 
-const overlayCtx = overlay.getContext('2d');
-
-// Topologia fissa delle 21 landmark di una mano (MediaPipe Hands), coppie di indici da collegare.
-const HAND_CONNECTIONS = [
-  [0, 1], [1, 2], [2, 3], [3, 4],
-  [0, 5], [5, 6], [6, 7], [7, 8],
-  [5, 9], [9, 10], [10, 11], [11, 12],
-  [9, 13], [13, 14], [14, 15], [15, 16],
-  [13, 17], [17, 18], [18, 19], [19, 20],
-  [0, 17]
-];
-
-// Il video è mirrorato via CSS (transform: scaleX(-1)) per un effetto
-// "specchio" naturale. Il server calcola i landmark sul frame NON mirrorato
-// (quello effettivamente inviato), quindi qui capovolgiamo la coordinata x
-// per farli combaciare con quello che l'utente vede a video.
-function mirroredX(x) {
-  return (1 - x) * overlay.width;
-}
-
-function drawHand(points, color) {
-  if (!points) return;
-  overlayCtx.strokeStyle = color;
-  overlayCtx.fillStyle = color;
-  overlayCtx.lineWidth = 3;
-  overlayCtx.lineCap = 'round';
-
-  for (const [a, b] of HAND_CONNECTIONS) {
-    const [ax, ay] = points[a];
-    const [bx, by] = points[b];
-    overlayCtx.beginPath();
-    overlayCtx.moveTo(mirroredX(ax), ay * overlay.height);
-    overlayCtx.lineTo(mirroredX(bx), by * overlay.height);
-    overlayCtx.stroke();
-  }
-
-  for (const [x, y] of points) {
-    overlayCtx.beginPath();
-    overlayCtx.arc(mirroredX(x), y * overlay.height, 4.5, 0, 2 * Math.PI);
-    overlayCtx.fill();
-  }
-}
-
-function drawLandmarks(landmarks) {
-  overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
-  if (!landmarks) return;
-  drawHand(landmarks.left, '#86efac');
-  drawHand(landmarks.right, '#5eead4');
-}
+// Lista dei segni rilevati
+let detectedSigns = [];
 
 function resizeOverlay() {
   if (!video.videoWidth) return;
@@ -67,11 +23,9 @@ function resizeOverlay() {
 video.addEventListener('loadeddata', resizeOverlay);
 
 function connectWebSocket() {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const host = window.location.host || 'localhost:8000';
-  const lesson = new URLSearchParams(window.location.search).get('lesson');
-  const wsUrl = lesson ? `${protocol}//${host}/ws?lesson=${encodeURIComponent(lesson)}` : `${protocol}//${host}/ws`;
-  ws = new WebSocket(wsUrl);
+  const protocol = 'ws:';
+  const host = 'localhost:8000';
+  ws = new WebSocket(`${protocol}//${host}/ws`);
 
   ws.onopen = () => {
     console.log('WebSocket connected');
@@ -84,41 +38,48 @@ function connectWebSocket() {
       messageInput.value = `Error: ${msg.error}`;
       return;
     }
-
-    // Messaggio veloce (ogni frame): solo skeleton, indipendente dalla
-    // classificazione (che arriva più di rado, in messaggi separati).
-    if (msg.type === 'landmarks') {
-      drawLandmarks(msg.landmarks);
-      return;
-    }
-
-    if (msg.type === 'lesson') {
-      if (msg.completed) {
-        messageInput.value = 'Lesson complete!';
-        return;
-      }
-      const step = `Step ${msg.step_index + 1}/${msg.total_steps}`;
-      const target = `Target: ${msg.target_display}`;
-      const accuracy = `Accuracy: ${(msg.accuracy * 100).toFixed(0)}%`;
-      const hold = `Hold: ${(msg.hold_progress * 100).toFixed(0)}%`;
-      messageInput.value = `${step} — ${target} — ${accuracy} — ${hold}`;
-      return;
-    }
-
-    // type === 'recognition' (modalità libera)
     const { gloss, confidence } = msg;
-    messageInput.value = `Detected sign: ${gloss} (conf: ${(confidence * 100).toFixed(0)}%)`;
+
+    if (gloss) {
+      messageInput.value = `Detected: ${gloss} (conf: ${confidence.toFixed(2)})`;
+      addSign(gloss);
+    } else {
+      messageInput.value = `No confident sign (conf: ${confidence.toFixed(2)})`;
+    }
   };
 
-  ws.onclose = (event) => {
+  ws.onclose = () => {
     console.log('WebSocket closed');
-    messageInput.value = event.reason ? `Disconnected: ${event.reason}` : 'Disconnected from model server.';
+    messageInput.value = 'Disconnected from model server.';
   };
 
   ws.onerror = (err) => {
     console.error('WebSocket error:', err);
     messageInput.value = 'WebSocket error.';
   };
+}
+
+function addSign(gloss) {
+  detectedSigns.push(gloss);
+  renderSignsList();
+}
+
+function renderSignsList() {
+  signsListEl.innerHTML = '';
+  detectedSigns.forEach((sign) => {
+    const div = document.createElement('div');
+    div.className = 'sign-item';
+    div.textContent = sign;
+    signsListEl.appendChild(div);
+  });
+  // scroll to bottom
+  signsListEl.scrollTop = signsListEl.scrollHeight;
+}
+
+function clearSigns() {
+  detectedSigns = [];
+  renderSignsList();
+  messageInput.value = '';
 }
 
 async function startCamera() {
@@ -140,7 +101,6 @@ async function startCamera() {
 
     connectWebSocket();
 
-    // Invia un frame ogni X ms (es. 10 fps)
     const fps = 20;
     const interval = 1000 / fps;
 
@@ -154,13 +114,9 @@ async function startCamera() {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Frame binario diretto (niente base64/JSON): più leggero e più veloce
-      // da codificare/decodificare su entrambi i lati.
-      canvas.toBlob((blob) => {
-        if (blob && ws.readyState === WebSocket.OPEN) {
-          ws.send(blob);
-        }
-      }, 'image/jpeg', 0.8);
+      const dataURL = canvas.toDataURL('image/jpeg', 0.8);
+
+      ws.send(JSON.stringify({ image: dataURL }));
     }, interval);
 
     messageInput.value = 'Camera active. Sending frames to model...';
@@ -173,3 +129,4 @@ async function startCamera() {
 }
 
 startBtn.addEventListener('click', startCamera);
+clearBtn.addEventListener('click', clearSigns);
