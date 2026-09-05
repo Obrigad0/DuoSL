@@ -16,7 +16,7 @@
 
 body {
   background: #f1f5f9;
-  color: #0f172a; 
+  color: #0f172a;
   min-height: 100vh;
 }
 
@@ -45,8 +45,8 @@ header h1 {
 .badge {
   font-size: 0.9rem;
   font-weight: 700;
-  color: #052e1f; 
-  background: #6ee7b7; 
+  color: #052e1f;
+  background: #6ee7b7;
   padding: 2px 10px;
   border-radius: 999px;
   vertical-align: middle;
@@ -54,23 +54,82 @@ header h1 {
 }
 
 header p {
-  color: #334155; 
+  color: #334155;
 }
 
-/* Menu buttons */
-.menu-buttons {
+/* ===== Menu screen: layout a TRE colonne ===== */
+/* Sinistra: info panel | Centro: titolo + bottoni | Destra: logo */
+
+/* Il menu ha bisogno di più respiro orizzontale rispetto alle altre schermate.
+   Si adatta alla larghezza dello schermo invece di essere fissa. */
+#menu-screen .app-container {
+  max-width: min(1400px, 92vw);
+}
+
+#menu-screen .menu-layout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 100px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+/* Colonna sinistra: pannello informativo, dentro un riquadro */
+#menu-screen .info-side {
+  flex: 1 1 220px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(2, 6, 23, 0.06);
+}
+
+#menu-screen .info-title {
+  font-size: 1.4rem;
+  margin-bottom: 10px;
+  color: #0f172a;
+}
+
+#menu-screen .info-text {
+  color: #334155;
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+
+/* Colonna centrale: titolo + sottotitolo + bottoni */
+#menu-screen .center-side {
+  flex: 1 1 280px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#menu-screen .menu-title {
+  font-size: 2rem;
+  margin-bottom: 8px;
+  color: #0f172a;
+}
+
+#menu-screen .menu-subtitle {
+  color: #334155;
+  margin-bottom: 24px;
+}
+
+#menu-screen .menu-buttons {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  width: 100%;
   max-width: 320px;
-  margin: 40px auto 0;
 }
 
-.menu-buttons button {
+#menu-screen .menu-buttons button {
   padding: 14px 20px;
   border: none;
   border-radius: 12px;
-  background: #0f766e; 
+  background: #0f766e;
   color: #f0fdfa;
   font-weight: 700;
   font-size: 1.05rem;
@@ -78,12 +137,36 @@ header p {
   transition: background 0.2s, transform 0.05s;
 }
 
-.menu-buttons button:hover {
-  background: #0b5e56; 
+#menu-screen .menu-buttons button:hover {
+  background: #0b5e56;
 }
 
-.menu-buttons button:active {
+#menu-screen .menu-buttons button:active {
   transform: scale(0.98);
+}
+
+/* Colonna destra: logo */
+#menu-screen .logo-side {
+  flex: 1 1 220px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#menu-screen .logo-img {
+  max-width: 100%;
+  height: auto;
+  max-height: 220px;
+}
+
+@media (max-width: 800px) {
+  #menu-screen .menu-layout {
+    flex-direction: column;
+  }
+
+  #menu-screen .center-side {
+    order: -1; /* il titolo/bottoni resta in cima su mobile */
+  }
 }
 
 /* Main content */
