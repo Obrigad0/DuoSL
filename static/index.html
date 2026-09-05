@@ -1,48 +1,83 @@
 <!DOCTYPE html>
 <html lang="en">
+  
 <head>
   <meta charset="UTF-8" />
-  <title>DuoSL Demo</title>
+  <title>DuoSL Demo (capture mode)</title>
   <link rel="stylesheet" href="/static/style.css" />
   <link rel="icon" href="/static/favicon.ico" />
 </head>
 
 
 <body>
-  <div class="app-container">
-    <header>
-      <h1>DuoSL – Sign Language Practice</h1>
-      <p>Show your sign in front of the camera</p>
-    </header>
 
-    <main class="main-content">
-      <div class="left-panel">
+  <!-- MENU INIZIALE -->
+  <div id="menu-screen" class="screen">
+    <div class="app-container">
+      <div class="menu-layout">
+
+        <!-- Colonna sinistra: pannello informativo -->
+        <div class="info-side">
+          <h2 class="info-title">What's DuoSL</h2>
+          <p class="info-text">
+            DuoSL è un'app per esercitarsi con la lingua dei segni in modo
+            interattivo: lezioni guidate passo-passo o allenamento libero
+            davanti alla webcam, con riconoscimento in tempo reale dei segni.
+          </p>
+        </div>
+
+        <!-- Colonna centrale: titolo + bottoni -->
+        <div class="center-side">
+          <h1 class="menu-title">Welcome in DuoSL</h1>
+          <p class="menu-subtitle">Choose your mode to start practicing sign language</p>
+          <div class="menu-buttons">
+            <button id="lessons-btn">Lessons</button>
+            <button id="free-btn">Free Training</button>
+          </div>
+        </div>
+
+        <!-- Colonna destra: logo -->
+        <div class="logo-side">
+          <img src="/static/owl-icon.png" alt="DuoSL owl logo" class="logo-img" />
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- UI PRINCIPALE -->
+  <div id="app-screen" class="screen hidden">
+    <div class="app-container">
+      <header>
+        <h1>DuoSL – Sign Language Practice <span class="badge">capture mode</span></h1>
+        <p>Show your sign in front of the camera</p>
+      </header>
+
+      <main class="main-content">
         <div class="camera-wrapper">
           <video id="webcam" autoplay playsinline></video>
           <canvas id="overlay"></canvas>
+          <div class="capture-indicator">
+            <span id="capture-dot"></span>
+            <span id="capture-text">Not Capturing</span>
+          </div>
         </div>
-      </div>
 
-      <div class="right-panel">
-        <h2>Detected signs</h2>
-        <div id="signs-list" class="signs-list"></div>
-
-        <div class="controls">
-          <label for="message">Last detection:</label>
+        <div class="info-panel">
+          <label for="message">Message / Feedback:</label>
           <input
             type="text"
             id="message"
-            placeholder="Waiting for detection..."
+            placeholder="Detected sign will appear here..."
             readonly
           />
           <button id="start-btn">Start Camera</button>
-          <button id="clear-btn" class="secondary">Cancella</button>
+          <button id="back-btn" type="button">Back to Menu</button>
         </div>
-      </div>
-    </main>
+      </main>
+    </div>
   </div>
 
   <script src="/static/app.js"></script>
 </body>
-
 </html>

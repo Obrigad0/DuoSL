@@ -100,6 +100,59 @@ def get_client(env_path='.env'):
     return client
 
 
+# === Standalone extraction of two helpers from inside start_live_feed() below ===
+# Nell'originale sono funzioni nidificate (usano `nonlocal`), quindi non
+# importabili da fuori. Stessa identica logica, solo a livello di modulo
+# così il server web puo' riusarle senza duplicare la CLI intera.
+
+def movement_score(landmarks_frames, hand_weight=3):
+    '''
+    Calculate the average movement between consecutive frames.
+
+    Parameters:
+    landmark_frames (numpy array):  Sequence of landmarks with frames with shape (T,N,2),
+                                    where T is number of frames, N is the number of landmarks,
+                                    and 2 corresponds to x and coordinates.
+
+    hand_weight (integer)       :   An integer scaling factor for hands landmark (>0). A higher
+                                    value increases the contribution of hand movement towards the final score
+
+    Output:
+    float: Average movement sccore across frames
+    '''
+    hand_indices = list(range(12, 33)) + list(range(33, 54))
+    diffs = []
+    for i in range(len(landmarks_frames) - 1):
+        diff = np.linalg.norm(landmarks_frames[i+1] - landmarks_frames[i], axis=1)
+
+        weighted_diff = diff.copy()
+        weighted_diff[hand_indices] *= hand_weight
+
+        total_diff = np.sum(weighted_diff)
+        diffs.append(total_diff)
+
+    avg_movement = np.mean(diffs)
+    return avg_movement
+
+
+def update_ema(new_score, prev_ema, alpha=0.3):
+    '''
+    Updates the Exponential Moving Average score with a new value.
+    Versione standalone (senza `nonlocal`): prende e restituisce lo stato esplicitamente.
+
+    Parameters:
+    new_score (float)   : The latest score to incorporate into the EMA.
+    prev_ema (float|None): EMA precedente (None se e' il primo valore).
+    alpha (float)       : The smoothing factor, where higher value gives more weight to the new score.
+
+    Returns:
+    float: updated EMA score
+    '''
+    if prev_ema is None:
+        return new_score
+    return alpha * new_score + (1 - alpha) * prev_ema
+
+
 # === Main function for live feed translation ====
 def start_live_feed(
         model_path,

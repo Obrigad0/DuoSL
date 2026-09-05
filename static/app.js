@@ -1,18 +1,83 @@
-// app.js
-
 const video = document.getElementById('webcam');
 const overlay = document.getElementById('overlay');
 const messageInput = document.getElementById('message');
 const startBtn = document.getElementById('start-btn');
-const clearBtn = document.getElementById('clear-btn');
-const signsListEl = document.getElementById('signs-list');
+const captureDot = document.getElementById('capture-dot');
+const captureText = document.getElementById('capture-text');
+
+const menuScreen = document.getElementById('menu-screen');
+const appScreen = document.getElementById('app-screen');
+const lessonsBtn = document.getElementById('lessons-btn');
+const freeBtn = document.getElementById('free-btn');
+const backBtn = document.getElementById('back-btn');
 
 let stream = null;
 let ws = null;
 let sendingInterval = null;
+let isCameraOn = false;
 
-// Lista dei segni rilevati
-let detectedSigns = [];
+const overlayCtx = overlay.getContext('2d');
+
+let frameSeq = 0;
+
+async function showAnnotatedFrame(blob) {
+  const seq = ++frameSeq;
+  const bitmap = await createImageBitmap(blob);
+
+  if (seq !== frameSeq) {
+    bitmap.close();
+    return;
+  }
+
+  if (overlay.width !== bitmap.width || overlay.height !== bitmap.height) {
+    overlay.width = bitmap.width;
+    overlay.height = bitmap.height;
+  }
+  overlayCtx.drawImage(bitmap, 0, 0);
+  bitmap.close();
+}
+
+function setStatus(msg) {
+  captureDot.classList.toggle('active', msg.capturing);
+  const movement = typeof msg.movement === 'number' ? msg.movement.toFixed(2) : '--';
+  captureText.textContent = `${msg.capturing ? 'Capturing' : 'Not Capturing'} · ${movement}`;
+
+  if (msg.discarded && !pendingStepTimer) {
+    messageInput.value = 'Capture too short, discarded';
+  }
+}
+
+const STEP_ADVANCE_DELAY_MS = 1200;
+let pendingStepTimer = null;
+
+function stepPrompt(msg) {
+  return msg.completed
+    ? 'Lesson completed!'
+    : `Step ${msg.step_index + 1}/${msg.total_steps} — Do: ${msg.target_display}`;
+}
+
+function showLesson(msg) {
+  if (pendingStepTimer) {
+    clearTimeout(pendingStepTimer);
+    pendingStepTimer = null;
+  }
+
+  if (!msg.attempted_display) {
+    messageInput.value = stepPrompt(msg);
+    return;
+  }
+
+  if (msg.correct) {
+    messageInput.value = `✓ Step ${msg.step_index}/${msg.total_steps} — ${msg.attempted_display} correct!`;
+    pendingStepTimer = setTimeout(() => {
+      pendingStepTimer = null;
+      messageInput.value = stepPrompt(msg);
+    }, STEP_ADVANCE_DELAY_MS);
+    return;
+  }
+
+  messageInput.value = `${stepPrompt(msg)} — recognized: ${msg.last_gloss} ✗`;
+}
 
 function resizeOverlay() {
   if (!video.videoWidth) return;
@@ -23,9 +88,11 @@ function resizeOverlay() {
 video.addEventListener('loadeddata', resizeOverlay);
 
 function connectWebSocket() {
-  const protocol = 'ws:';
-  const host = 'localhost:8000';
-  ws = new WebSocket(`${protocol}//${host}/ws`);
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = window.location.host || 'localhost:8001';
+  const lesson = new URLSearchParams(window.location.search).get('lesson');
+  const wsUrl = lesson ? `${protocol}//${host}/ws?lesson=${encodeURIComponent(lesson)}` : `${protocol}//${host}/ws`;
+  ws = new WebSocket(wsUrl);
 
   ws.onopen = () => {
     console.log('WebSocket connected');
@@ -33,53 +100,41 @@ function connectWebSocket() {
   };
 
   ws.onmessage = (event) => {
+    if (event.data instanceof Blob) {
+      showAnnotatedFrame(event.data);
+      return;
+    }
+
     const msg = JSON.parse(event.data);
     if (msg.error) {
       messageInput.value = `Error: ${msg.error}`;
       return;
     }
-    const { gloss, confidence } = msg;
 
-    if (gloss) {
-      messageInput.value = `Detected: ${gloss} (conf: ${confidence.toFixed(2)})`;
-      addSign(gloss);
-    } else {
-      messageInput.value = `No confident sign (conf: ${confidence.toFixed(2)})`;
+    if (msg.type === 'status') {
+      setStatus(msg);
+      return;
     }
+
+    if (msg.type === 'lesson') {
+      showLesson(msg);
+      return;
+    }
+
+    // type === 'recognition' (free mode)
+    const { gloss, confidence } = msg;
+    messageInput.value = `Detected sign: ${gloss} (conf: ${(confidence * 100).toFixed(0)}%)`;
   };
 
-  ws.onclose = () => {
+  ws.onclose = (event) => {
     console.log('WebSocket closed');
-    messageInput.value = 'Disconnected from model server.';
+    messageInput.value = event.reason ? `Disconnected: ${event.reason}` : 'Disconnected from model server.';
   };
 
   ws.onerror = (err) => {
     console.error('WebSocket error:', err);
     messageInput.value = 'WebSocket error.';
   };
-}
-
-function addSign(gloss) {
-  detectedSigns.push(gloss);
-  renderSignsList();
-}
-
-function renderSignsList() {
-  signsListEl.innerHTML = '';
-  detectedSigns.forEach((sign) => {
-    const div = document.createElement('div');
-    div.className = 'sign-item';
-    div.textContent = sign;
-    signsListEl.appendChild(div);
-  });
-  // scroll to bottom
-  signsListEl.scrollTop = signsListEl.scrollHeight;
-}
-
-function clearSigns() {
-  detectedSigns = [];
-  renderSignsList();
-  messageInput.value = '';
 }
 
 async function startCamera() {
@@ -114,19 +169,105 @@ async function startCamera() {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      const dataURL = canvas.toDataURL('image/jpeg', 0.8);
-
-      ws.send(JSON.stringify({ image: dataURL }));
+      canvas.toBlob((blob) => {
+        if (blob && ws.readyState === WebSocket.OPEN) {
+          ws.send(blob);
+        }
+      }, 'image/jpeg', 0.8);
     }, interval);
 
     messageInput.value = 'Camera active. Sending frames to model...';
-    startBtn.textContent = 'Camera ON';
-    startBtn.disabled = true;
+    startBtn.textContent = 'Stop Camera';
+    startBtn.disabled = false;
+    isCameraOn = true;
   } catch (err) {
     console.error('Error accessing webcam:', err);
     messageInput.value = 'Error: could not access webcam.';
   }
 }
 
-startBtn.addEventListener('click', startCamera);
-clearBtn.addEventListener('click', clearSigns);
+function stopCamera() {
+  if (sendingInterval) {
+    clearInterval(sendingInterval);
+    sendingInterval = null;
+  }
+  if (ws) {
+    ws.close();
+    ws = null;
+  }
+  if (stream) {
+    stream.getTracks().forEach(track => track.stop());
+    stream = null;
+  }
+  if (video.srcObject) {
+    video.srcObject = null;
+  }
+
+  // Invalida eventuali frame ancora in arrivo/in elaborazione
+  frameSeq++;
+
+  // Pulisce il canvas overlay, altrimenti resta visibile l'ultimo frame ricevuto
+  overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
+
+  messageInput.value = '';
+  captureText.textContent = 'Not Capturing';
+  captureDot.classList.remove('active');
+
+  startBtn.textContent = 'Start Camera';
+  startBtn.disabled = false;
+  isCameraOn = false;
+}
+
+function toggleCamera() {
+  if (isCameraOn) {
+    stopCamera();
+  } else {
+    startCamera();
+  }
+}
+
+function goToApp() {
+  menuScreen.classList.add('hidden');
+  appScreen.classList.remove('hidden');
+}
+
+function goToMenu() {
+  stopCamera();
+  appScreen.classList.add('hidden');
+  menuScreen.classList.remove('hidden');
+}
+
+// Inizializzazione: controlla l'URL per aprire menu o un'altra schermata
+function init() {
+  const params = new URLSearchParams(window.location.search);
+  const lesson = params.get('lesson');
+  const mode = params.get('mode');
+
+  if (lesson || mode === 'free') {
+    menuScreen.classList.add('hidden');
+    appScreen.classList.remove('hidden');
+  } else {
+    menuScreen.classList.remove('hidden');
+    appScreen.classList.add('hidden');
+  }
+
+  lessonsBtn.addEventListener('click', () => {
+    window.location.search = 'lesson=test_lesson';
+  });
+
+  freeBtn.addEventListener('click', () => {
+    window.location.search = 'mode=free';
+  });
+
+  backBtn.addEventListener('click', () => {
+    const url = new URL(window.location);
+    url.searchParams.delete('lesson');
+    url.searchParams.delete('mode');
+    window.history.replaceState({}, '', url);
+    goToMenu();
+  });
+
+  startBtn.addEventListener('click', toggleCamera);
+}
+
+init();
