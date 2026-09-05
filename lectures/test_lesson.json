@@ -4,6 +4,8 @@
   "steps": [
     { "gloss": "HELLO", "demo_url": "/demos/hello.gif"},
     { "gloss": "HOW1", "display_text": "HOW", "demo_url": "/demos/how.gif" },
-    { "gloss": "FINE2", "display_text": "FINE", "demo_url":"/demos/fine.gif" }
+    { "gloss": "FINE2", "display_text": "FINE", "demo_url":"/demos/fine.gif" },
+    { "gloss": "YES", "demo_url":"/demos/yes.gif" },
+    { "gloss": "NO", "demo_url":"/demos/no.gif" }
   ]
 }
