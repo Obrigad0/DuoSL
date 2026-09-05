@@ -1,4 +1,3 @@
-
 const video = document.getElementById('webcam');
 const overlay = document.getElementById('overlay');
 const messageInput = document.getElementById('message');
@@ -6,23 +5,24 @@ const startBtn = document.getElementById('start-btn');
 const captureDot = document.getElementById('capture-dot');
 const captureText = document.getElementById('capture-text');
 
+const menuScreen = document.getElementById('menu-screen');
+const appScreen = document.getElementById('app-screen');
+const lessonsBtn = document.getElementById('lessons-btn');
+const freeBtn = document.getElementById('free-btn');
+const backBtn = document.getElementById('back-btn');
+
 let stream = null;
 let ws = null;
 let sendingInterval = null;
 
 const overlayCtx = overlay.getContext('2d');
 
-// Il server rimanda il frame gia' annotato (immagine + scheletro disegnato da
-// MediaPipe stesso): qui lo disegniamo sul canvas, che copre il <video> live.
-// Immagine e scheletro sono gli stessi pixel, quindi non possono sfasarsi.
-// Lo specchio e' puramente visivo, applicato via CSS al canvas.
 let frameSeq = 0;
 
 async function showAnnotatedFrame(blob) {
   const seq = ++frameSeq;
   const bitmap = await createImageBitmap(blob);
 
-  // Se nel frattempo e' arrivato un frame piu' recente, scarta questo.
   if (seq !== frameSeq) {
     bitmap.close();
     return;
@@ -36,29 +36,23 @@ async function showAnnotatedFrame(blob) {
   bitmap.close();
 }
 
-// Mostra anche il valore di movimento (EMA) accanto allo stato: serve a tarare
-// le soglie guardando i numeri reali della propria webcam, invece di indovinare.
 function setStatus(msg) {
   captureDot.classList.toggle('active', msg.capturing);
   const movement = typeof msg.movement === 'number' ? msg.movement.toFixed(2) : '--';
   captureText.textContent = `${msg.capturing ? 'Capturing' : 'Not Capturing'} · ${movement}`;
 
-  // Non sovrascrivere la conferma di uno step appena superato.
   if (msg.discarded && !pendingStepTimer) {
-    messageInput.value = 'Cattura troppo breve, scartata';
+    messageInput.value = 'Capture too short, discarded';
   }
 }
 
-// Quando uno step viene superato mostriamo prima la conferma, e solo dopo una
-// pausa passiamo alla richiesta successiva: altrimenti le due informazioni
-// arrivano insieme e non si capisce di aver completato il segno.
 const STEP_ADVANCE_DELAY_MS = 1200;
 let pendingStepTimer = null;
 
 function stepPrompt(msg) {
   return msg.completed
-    ? 'Lezione completata!'
-    : `Step ${msg.step_index + 1}/${msg.total_steps} — Fai: ${msg.target_display}`;
+    ? 'Lesson completed!'
+    : `Step ${msg.step_index + 1}/${msg.total_steps} — Do: ${msg.target_display}`;
 }
 
 function showLesson(msg) {
@@ -67,15 +61,13 @@ function showLesson(msg) {
     pendingStepTimer = null;
   }
 
-  // Nessun tentativo ancora fatto: e' il messaggio iniziale della lezione.
   if (!msg.attempted_display) {
     messageInput.value = stepPrompt(msg);
     return;
   }
 
   if (msg.correct) {
-    // step_index e' gia' avanzato, quindi lo step appena superato e' step_index (1-based).
-    messageInput.value = `✓ Step ${msg.step_index}/${msg.total_steps} — ${msg.attempted_display} corretto!`;
+    messageInput.value = `✓ Step ${msg.step_index}/${msg.total_steps} — ${msg.attempted_display} correct!`;
     pendingStepTimer = setTimeout(() => {
       pendingStepTimer = null;
       messageInput.value = stepPrompt(msg);
@@ -83,7 +75,7 @@ function showLesson(msg) {
     return;
   }
 
-  messageInput.value = `${stepPrompt(msg)} — riconosciuto: ${msg.last_gloss} ✗`;
+  messageInput.value = `${stepPrompt(msg)} — recognized: ${msg.last_gloss} ✗`;
 }
 
 function resizeOverlay() {
@@ -107,7 +99,6 @@ function connectWebSocket() {
   };
 
   ws.onmessage = (event) => {
-    // Frame annotato dal server (binario): immagine + scheletro insieme.
     if (event.data instanceof Blob) {
       showAnnotatedFrame(event.data);
       return;
@@ -119,20 +110,17 @@ function connectWebSocket() {
       return;
     }
 
-    // Messaggio veloce (ogni frame): stato Capturing/Not Capturing,
-    // nessuna chiamata al modello coinvolta.
     if (msg.type === 'status') {
       setStatus(msg);
       return;
     }
 
-    // Messaggio raro (una volta per gesto isolato catturato).
     if (msg.type === 'lesson') {
       showLesson(msg);
       return;
     }
 
-    // type === 'recognition' (modalita' libera)
+    // type === 'recognition' (free mode)
     const { gloss, confidence } = msg;
     messageInput.value = `Detected sign: ${gloss} (conf: ${(confidence * 100).toFixed(0)}%)`;
   };
@@ -196,4 +184,65 @@ async function startCamera() {
   }
 }
 
+function stopCamera() {
+  if (sendingInterval) {
+    clearInterval(sendingInterval);
+    sendingInterval = null;
+  }
+  if (ws) {
+    ws.close();
+    ws = null;
+  }
+  if (stream) {
+    stream.getTracks().forEach(track => track.stop());
+    stream = null;
+  }
+  if (video.srcObject) {
+    video.srcObject = null;
+  }
+  startBtn.textContent = 'Start Camera';
+  startBtn.disabled = false;
+  messageInput.value = '';
+  captureText.textContent = 'Not Capturing';
+  captureDot.classList.remove('active');
+}
+
+function goToApp() {
+  menuScreen.classList.add('hidden');
+  appScreen.classList.remove('hidden');
+}
+
+function goToMenu() {
+  stopCamera();
+  appScreen.classList.add('hidden');
+  menuScreen.classList.remove('hidden');
+}
+
+// Inizializzazione: menu all'apertura
+function init() {
+  // Assicurati che il menu sia visibile e l'app nascosta
+  menuScreen.classList.remove('hidden');
+  appScreen.classList.add('hidden');
+
+  lessonsBtn.addEventListener('click', () => {
+    // per fare più lezioni, puoi cambiare URL o passare un parametro
+    // Esempio: window.location.search = '?lesson=lesson1';
+    // Per ora, si utilizza quello che c'è già nell'URL
+    goToApp();
+  });
+
+  freeBtn.addEventListener('click', () => {
+    // Per la modalità libera, rimuovi il parametro lesson
+    const newUrl = window.location.pathname;
+    if (window.location.search) {
+      history.replaceState({}, '', newUrl);
+    }
+    goToApp();
+  });
+
+  backBtn.addEventListener('click', goToMenu);
+}
+
 startBtn.addEventListener('click', startCamera);
+
+init();
