@@ -12,57 +12,78 @@ let sendingInterval = null;
 
 const overlayCtx = overlay.getContext('2d');
 
-// Topologia fissa delle 21 landmark di una mano (MediaPipe Hands), coppie di indici da collegare.
-const HAND_CONNECTIONS = [
-  [0, 1], [1, 2], [2, 3], [3, 4],
-  [0, 5], [5, 6], [6, 7], [7, 8],
-  [5, 9], [9, 10], [10, 11], [11, 12],
-  [9, 13], [13, 14], [14, 15], [15, 16],
-  [13, 17], [17, 18], [18, 19], [19, 20],
-  [0, 17]
-];
+// Il server rimanda il frame gia' annotato (immagine + scheletro disegnato da
+// MediaPipe stesso): qui lo disegniamo sul canvas, che copre il <video> live.
+// Immagine e scheletro sono gli stessi pixel, quindi non possono sfasarsi.
+// Lo specchio e' puramente visivo, applicato via CSS al canvas.
+let frameSeq = 0;
 
-// Il video e' mirrorato via CSS (transform: scaleX(-1)) per un effetto
-// "specchio" naturale. Il server calcola i landmark sul frame NON mirrorato
-// (quello effettivamente inviato), quindi qui capovolgiamo la coordinata x
-// per farli combaciare con quello che l'utente vede a video.
-function mirroredX(x) {
-  return (1 - x) * overlay.width;
-}
+async function showAnnotatedFrame(blob) {
+  const seq = ++frameSeq;
+  const bitmap = await createImageBitmap(blob);
 
-function drawHand(points, color) {
-  if (!points) return;
-  overlayCtx.strokeStyle = color;
-  overlayCtx.fillStyle = color;
-  overlayCtx.lineWidth = 3;
-  overlayCtx.lineCap = 'round';
-
-  for (const [a, b] of HAND_CONNECTIONS) {
-    const [ax, ay] = points[a];
-    const [bx, by] = points[b];
-    overlayCtx.beginPath();
-    overlayCtx.moveTo(mirroredX(ax), ay * overlay.height);
-    overlayCtx.lineTo(mirroredX(bx), by * overlay.height);
-    overlayCtx.stroke();
+  // Se nel frattempo e' arrivato un frame piu' recente, scarta questo.
+  if (seq !== frameSeq) {
+    bitmap.close();
+    return;
   }
 
-  for (const [x, y] of points) {
-    overlayCtx.beginPath();
-    overlayCtx.arc(mirroredX(x), y * overlay.height, 4.5, 0, 2 * Math.PI);
-    overlayCtx.fill();
+  if (overlay.width !== bitmap.width || overlay.height !== bitmap.height) {
+    overlay.width = bitmap.width;
+    overlay.height = bitmap.height;
+  }
+  overlayCtx.drawImage(bitmap, 0, 0);
+  bitmap.close();
+}
+
+// Mostra anche il valore di movimento (EMA) accanto allo stato: serve a tarare
+// le soglie guardando i numeri reali della propria webcam, invece di indovinare.
+function setStatus(msg) {
+  captureDot.classList.toggle('active', msg.capturing);
+  const movement = typeof msg.movement === 'number' ? msg.movement.toFixed(2) : '--';
+  captureText.textContent = `${msg.capturing ? 'Capturing' : 'Not Capturing'} · ${movement}`;
+
+  // Non sovrascrivere la conferma di uno step appena superato.
+  if (msg.discarded && !pendingStepTimer) {
+    messageInput.value = 'Cattura troppo breve, scartata';
   }
 }
 
-function drawLandmarks(landmarks) {
-  overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
-  if (!landmarks) return;
-  drawHand(landmarks.left, '#86efac');
-  drawHand(landmarks.right, '#5eead4');
+// Quando uno step viene superato mostriamo prima la conferma, e solo dopo una
+// pausa passiamo alla richiesta successiva: altrimenti le due informazioni
+// arrivano insieme e non si capisce di aver completato il segno.
+const STEP_ADVANCE_DELAY_MS = 1200;
+let pendingStepTimer = null;
+
+function stepPrompt(msg) {
+  return msg.completed
+    ? 'Lezione completata!'
+    : `Step ${msg.step_index + 1}/${msg.total_steps} — Fai: ${msg.target_display}`;
 }
 
-function setCapturing(capturing) {
-  captureDot.classList.toggle('active', capturing);
-  captureText.textContent = capturing ? 'Capturing' : 'Not Capturing';
+function showLesson(msg) {
+  if (pendingStepTimer) {
+    clearTimeout(pendingStepTimer);
+    pendingStepTimer = null;
+  }
+
+  // Nessun tentativo ancora fatto: e' il messaggio iniziale della lezione.
+  if (!msg.attempted_display) {
+    messageInput.value = stepPrompt(msg);
+    return;
+  }
+
+  if (msg.correct) {
+    // step_index e' gia' avanzato, quindi lo step appena superato e' step_index (1-based).
+    messageInput.value = `✓ Step ${msg.step_index}/${msg.total_steps} — ${msg.attempted_display} corretto!`;
+    pendingStepTimer = setTimeout(() => {
+      pendingStepTimer = null;
+      messageInput.value = stepPrompt(msg);
+    }, STEP_ADVANCE_DELAY_MS);
+    return;
+  }
+
+  messageInput.value = `${stepPrompt(msg)} — riconosciuto: ${msg.last_gloss} ✗`;
 }
 
 function resizeOverlay() {
@@ -86,32 +107,28 @@ function connectWebSocket() {
   };
 
   ws.onmessage = (event) => {
+    // Frame annotato dal server (binario): immagine + scheletro insieme.
+    if (event.data instanceof Blob) {
+      showAnnotatedFrame(event.data);
+      return;
+    }
+
     const msg = JSON.parse(event.data);
     if (msg.error) {
       messageInput.value = `Error: ${msg.error}`;
       return;
     }
 
-    // Messaggio veloce (ogni frame): skeleton + stato Capturing/Not Capturing,
+    // Messaggio veloce (ogni frame): stato Capturing/Not Capturing,
     // nessuna chiamata al modello coinvolta.
     if (msg.type === 'status') {
-      drawLandmarks(msg.landmarks);
-      setCapturing(msg.capturing);
+      setStatus(msg);
       return;
     }
 
     // Messaggio raro (una volta per gesto isolato catturato).
     if (msg.type === 'lesson') {
-      if (msg.completed) {
-        messageInput.value = 'Lesson complete!';
-        return;
-      }
-      const step = `Step ${msg.step_index + 1}/${msg.total_steps}`;
-      const target = `Target: ${msg.target_display}`;
-      const result = msg.correct
-        ? `Correct! (recognized: ${msg.last_gloss})`
-        : `Try again — recognized: ${msg.last_gloss}`;
-      messageInput.value = `${step} — ${target} — ${result}`;
+      showLesson(msg);
       return;
     }
 

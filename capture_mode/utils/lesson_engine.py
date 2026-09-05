@@ -69,10 +69,17 @@ def load_lesson(name: str, gloss_to_index: dict, lectures_dir: str = "lectures")
 
 @dataclass
 class CaptureResult:
+    """
+    Attenzione alla distinzione, e' quella che prima causava un bug:
+      - target_*    = cosa l'utente deve fare ADESSO (gia' aggiornato se ha appena avanzato)
+      - attempted_* = cosa era richiesto nel tentativo appena valutato (None nel messaggio iniziale)
+    """
     step_index: int
     total_steps: int
     target_gloss: Optional[str]
     target_display: Optional[str]
+    attempted_gloss: Optional[str]
+    attempted_display: Optional[str]
     last_gloss: str
     last_confidence: float
     correct: bool
@@ -97,20 +104,39 @@ class LessonSession:
             return None
         return self.lesson.steps[self.current_step_index]
 
+    def current_state(self) -> CaptureResult:
+        """Stato attuale senza alcun tentativo: serve a dire subito all'utente qual e' il primo segno."""
+        step = self.current_step
+        return CaptureResult(
+            step_index=self.current_step_index,
+            total_steps=len(self.lesson.steps),
+            target_gloss=step.gloss if step else None,
+            target_display=step.label() if step else None,
+            attempted_gloss=None,
+            attempted_display=None,
+            last_gloss="",
+            last_confidence=0.0,
+            correct=False,
+            advanced=False,
+            completed=self.completed,
+        )
+
     def on_capture(self, prediction_vector: np.ndarray) -> CaptureResult:
         """Chiamato una volta per ogni gesto isolato catturato (movimento iniziato e poi fermato)."""
         predicted_index = int(np.argmax(prediction_vector))
         last_gloss = self.index_to_gloss.get(str(predicted_index), "UNKNOWN")
         last_confidence = float(prediction_vector[predicted_index])
 
-        step = self.current_step
-        if step is None:
+        attempted = self.current_step
+        if attempted is None:
             self.completed = True
             return CaptureResult(
                 step_index=len(self.lesson.steps),
                 total_steps=len(self.lesson.steps),
                 target_gloss=None,
                 target_display=None,
+                attempted_gloss=None,
+                attempted_display=None,
                 last_gloss=last_gloss,
                 last_confidence=last_confidence,
                 correct=False,
@@ -118,22 +144,25 @@ class LessonSession:
                 completed=True,
             )
 
-        correct = (last_gloss == step.gloss)
-        advanced = False
+        correct = (last_gloss == attempted.gloss)
         if correct:
-            advanced = True
             self.current_step_index += 1
             if self.current_step_index >= len(self.lesson.steps):
                 self.completed = True
 
+        # Il target riportato e' quello da fare ORA, quindi va letto DOPO l'avanzamento.
+        next_step = self.current_step
+
         return CaptureResult(
             step_index=self.current_step_index,
             total_steps=len(self.lesson.steps),
-            target_gloss=step.gloss,
-            target_display=step.label(),
+            target_gloss=next_step.gloss if next_step else None,
+            target_display=next_step.label() if next_step else None,
+            attempted_gloss=attempted.gloss,
+            attempted_display=attempted.label(),
             last_gloss=last_gloss,
             last_confidence=last_confidence,
             correct=correct,
-            advanced=advanced,
+            advanced=correct,
             completed=self.completed,
         )

@@ -4,6 +4,6 @@
   "steps": [
     { "gloss": "HELLO" },
     { "gloss": "HOW1", "display_text": "HOW" },
-    { "gloss": "FINE1", "display_text": "FINE" }
+    { "gloss": "FINE2", "display_text": "FINE" }
   ]
 }

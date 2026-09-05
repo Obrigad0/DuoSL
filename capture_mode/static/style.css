@@ -71,10 +71,15 @@ header p {
   transform: scaleX(-1);
 }
 
+/* Il canvas mostra il frame annotato dal server (immagine + scheletro insieme)
+   e copre il <video> live sottostante, che resta solo come sorgente di cattura.
+   Lo specchio si applica qui: essendo un'unica immagine, non puo' disallinearsi. */
 #overlay {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  transform: scaleX(-1);
+  background: #0b1220;
 }
 
 .capture-indicator {
