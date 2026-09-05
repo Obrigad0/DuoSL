@@ -14,6 +14,7 @@ const backBtn = document.getElementById('back-btn');
 let stream = null;
 let ws = null;
 let sendingInterval = null;
+let isCameraOn = false;
 
 const overlayCtx = overlay.getContext('2d');
 
@@ -176,8 +177,9 @@ async function startCamera() {
     }, interval);
 
     messageInput.value = 'Camera active. Sending frames to model...';
-    startBtn.textContent = 'Camera ON';
-    startBtn.disabled = true;
+    startBtn.textContent = 'Stop Camera';
+    startBtn.disabled = false;
+    isCameraOn = true;
   } catch (err) {
     console.error('Error accessing webcam:', err);
     messageInput.value = 'Error: could not access webcam.';
@@ -200,11 +202,28 @@ function stopCamera() {
   if (video.srcObject) {
     video.srcObject = null;
   }
-  startBtn.textContent = 'Start Camera';
-  startBtn.disabled = false;
+
+  // Invalida eventuali frame ancora in arrivo/in elaborazione
+  frameSeq++;
+
+  // Pulisce il canvas overlay, altrimenti resta visibile l'ultimo frame ricevuto
+  overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
+
   messageInput.value = '';
   captureText.textContent = 'Not Capturing';
   captureDot.classList.remove('active');
+
+  startBtn.textContent = 'Start Camera';
+  startBtn.disabled = false;
+  isCameraOn = false;
+}
+
+function toggleCamera() {
+  if (isCameraOn) {
+    stopCamera();
+  } else {
+    startCamera();
+  }
 }
 
 function goToApp() {
@@ -218,31 +237,37 @@ function goToMenu() {
   menuScreen.classList.remove('hidden');
 }
 
-// Inizializzazione: menu all'apertura
+// Inizializzazione: menu all'apertura, oppure lezione se presente in URL
 function init() {
-  // Assicurati che il menu sia visibile e l'app nascosta
-  menuScreen.classList.remove('hidden');
-  appScreen.classList.add('hidden');
+  const params = new URLSearchParams(window.location.search);
+  const lesson = params.get('lesson');
+  const mode = params.get('mode');
+
+  if (lesson || mode === 'free') {
+    menuScreen.classList.add('hidden');
+    appScreen.classList.remove('hidden');
+  } else {
+    menuScreen.classList.remove('hidden');
+    appScreen.classList.add('hidden');
+  }
 
   lessonsBtn.addEventListener('click', () => {
-    // per fare più lezioni, puoi cambiare URL o passare un parametro
-    // Esempio: window.location.search = '?lesson=lesson1';
-    // Per ora, si utilizza quello che c'è già nell'URL
-    goToApp();
+    window.location.search = 'lesson=test_lesson';
   });
 
   freeBtn.addEventListener('click', () => {
-    // Per la modalità libera, rimuovi il parametro lesson
-    const newUrl = window.location.pathname;
-    if (window.location.search) {
-      history.replaceState({}, '', newUrl);
-    }
-    goToApp();
+    window.location.search = 'mode=free';
   });
 
-  backBtn.addEventListener('click', goToMenu);
-}
+  backBtn.addEventListener('click', () => {
+    const url = new URL(window.location);
+    url.searchParams.delete('lesson');
+    url.searchParams.delete('mode');
+    window.history.replaceState({}, '', url);
+    goToMenu();
+  });
 
-startBtn.addEventListener('click', startCamera);
+  startBtn.addEventListener('click', toggleCamera);
+}
 
 init();
