@@ -12,7 +12,7 @@
 <body>
 
   <!-- MENU INIZIALE -->
-  <div id="menu-screen" class="screen">
+  <div id="menu-screen" class="screen menu-page">
     <div class="app-container">
 
       <!-- Titolo -->
@@ -48,6 +48,23 @@
           <img src="/static/sign-language.png" alt="DuoSL sign logo" class="logo-img" />
         </div>
 
+      </div>
+    </div>
+  </div>
+
+  <!-- SCHERMATA SCELTA LEZIONE -->
+  <div id="lectures-screen" class="screen menu-page hidden">
+    <div class="app-container">
+      <h1 class="menu-page-title">Choose a Lecture</h1>
+      <div class="menu-layout">
+        <div class="center-side">
+          <div class="menu-buttons">
+            <button class="lecture-btn" data-lesson="lesson1">Lecture 1</button>
+            <button class="lecture-btn" data-lesson="lesson2">Lecture 2</button>
+            <button class="lecture-btn" data-lesson="lesson3">Lecture 3</button>
+            <button id="lectures-back-btn" type="button">Back to Menu</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>

@@ -1,6 +1,6 @@
 {
-  "id": "lesson_2",
-  "name": "Lesson 2",
+  "id": "lesson3",
+  "name": "Lesson 3",
   "steps": [
     { "gloss": "MY", "demo_url": "/demos/my.gif"},
     { "gloss": "NAME", "demo_url": "/demos/name.gif" }

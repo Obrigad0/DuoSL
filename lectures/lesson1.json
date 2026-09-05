@@ -1,5 +1,5 @@
 {
-  "id": "test_lesson",
+  "id": "lesson1",
   "name": "Test Lesson",
   "steps": [
     { "gloss": "HELLO", "demo_url": "/demos/hello.gif"},

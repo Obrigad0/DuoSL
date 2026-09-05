@@ -62,7 +62,7 @@ header p {
 
 /* Il menu ha bisogno di più respiro orizzontale rispetto alle altre schermate.
    Si adatta alla larghezza dello schermo invece di essere fissa. */
-#menu-screen .app-container {
+.menu-page .app-container {
   max-width: min(1400px, 92vw);
   min-height: 100vh;
   display: flex;
@@ -70,16 +70,16 @@ header p {
 }
 
 /* Titolo principale, fissato in alto */
-#menu-screen .menu-page-title {
+.menu-page .menu-page-title {
   text-align: center;
   font-size: 2.6rem;
   color: #0f172a;
-  margin-top: 7vh;
+  margin-top: 5vh;
   margin-bottom: 0;
 }
 
 /* Le tre colonne occupano lo spazio restante e restano centrate al suo interno */
-#menu-screen .menu-layout {
+.menu-page .menu-layout {
   flex: 1;
   display: flex;
   align-items: center;
@@ -90,7 +90,7 @@ header p {
 }
 
 /* Colonna sinistra: pannello informativo, dentro un riquadro con lieve colore di sfondo */
-#menu-screen .info-side {
+.menu-page .info-side {
   flex: 1 1 220px;
   background: #f0fdfa;
   border: 1px solid #e2e8f0;
@@ -99,20 +99,20 @@ header p {
   box-shadow: 0 4px 12px rgba(2, 6, 23, 0.06);
 }
 
-#menu-screen .info-title {
+.menu-page .info-title {
   font-size: 1.4rem;
   margin-bottom: 10px;
   color: #0f172a;
 }
 
-#menu-screen .info-text {
+.menu-page .info-text {
   color: #334155;
   line-height: 1.5;
   font-size: 0.95rem;
 }
 
 /* Colonna centrale: titolo + sottotitolo + bottoni */
-#menu-screen .center-side {
+.menu-page .center-side {
   flex: 1 1 280px;
   text-align: center;
   display: flex;
@@ -120,12 +120,12 @@ header p {
   align-items: center;
 }
 
-#menu-screen .menu-subtitle {
+.menu-page .menu-subtitle {
   color: #334155;
   margin-bottom: 24px;
 }
 
-#menu-screen .menu-buttons {
+.menu-page .menu-buttons {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -133,7 +133,7 @@ header p {
   max-width: 320px;
 }
 
-#menu-screen .menu-buttons button {
+.menu-page .menu-buttons button {
   padding: 14px 20px;
   border: none;
   border-radius: 12px;
@@ -145,34 +145,34 @@ header p {
   transition: background 0.2s, transform 0.05s;
 }
 
-#menu-screen .menu-buttons button:hover {
+.menu-page .menu-buttons button:hover {
   background: #0b5e56;
 }
 
-#menu-screen .menu-buttons button:active {
+.menu-page .menu-buttons button:active {
   transform: scale(0.98);
 }
 
 /* Colonna destra: logo */
-#menu-screen .logo-side {
+.menu-page .logo-side {
   flex: 1 1 220px;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
-#menu-screen .logo-img {
+.menu-page .logo-img {
   max-width: 100%;
   height: auto;
   max-height: 220px;
 }
 
 @media (max-width: 800px) {
-  #menu-screen .menu-layout {
+  .menu-page .menu-layout {
     flex-direction: column;
   }
 
-  #menu-screen .center-side {
+  .menu-page .center-side {
     order: -1; /* il titolo/bottoni resta in cima su mobile */
   }
 }

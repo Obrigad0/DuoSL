@@ -11,6 +11,10 @@ const lessonsBtn = document.getElementById('lessons-btn');
 const freeBtn = document.getElementById('free-btn');
 const backBtn = document.getElementById('back-btn');
 
+const lecturesScreen = document.getElementById('lectures-screen');
+const lecturesBackBtn = document.getElementById('lectures-back-btn');
+const lectureButtons = document.querySelectorAll('.lecture-btn');
+
 let stream = null;
 let ws = null;
 let sendingInterval = null;
@@ -239,6 +243,16 @@ function goToMenu() {
   menuScreen.classList.remove('hidden');
 }
 
+function goToLectures() {
+  menuScreen.classList.add('hidden');
+  lecturesScreen.classList.remove('hidden');
+}
+
+function goToMenuFromLectures() {
+  lecturesScreen.classList.add('hidden');
+  menuScreen.classList.remove('hidden');
+}
+
 // Inizializzazione: controlla l'URL per aprire menu o un'altra schermata
 function init() {
   const params = new URLSearchParams(window.location.search);
@@ -246,28 +260,55 @@ function init() {
   const mode = params.get('mode');
 
   if (lesson || mode === 'free') {
+    // Arriviamo direttamente su una lezione o sul free training
     menuScreen.classList.add('hidden');
+    lecturesScreen.classList.add('hidden');
     appScreen.classList.remove('hidden');
   } else {
+    // Stato iniziale: menu
     menuScreen.classList.remove('hidden');
+    lecturesScreen.classList.add('hidden');
     appScreen.classList.add('hidden');
   }
 
-  lessonsBtn.addEventListener('click', () => {
-    window.location.search = 'lesson=test_lesson';
+  // "Lessons" ora apre la schermata di scelta lezione, senza ricaricare la pagina
+  lessonsBtn.addEventListener('click', goToLectures);
+
+  // Ogni bottone Lecture N ricarica la pagina con ?lesson=lessonN
+  lectureButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const lessonId = btn.dataset.lesson;
+      window.location.search = `lesson=${encodeURIComponent(lessonId)}`;
+    });
   });
+
+  lecturesBackBtn.addEventListener('click', goToMenuFromLectures);
 
   freeBtn.addEventListener('click', () => {
     window.location.search = 'mode=free';
   });
 
   backBtn.addEventListener('click', () => {
-    const url = new URL(window.location);
-    url.searchParams.delete('lesson');
-    url.searchParams.delete('mode');
-    window.history.replaceState({}, '', url);
-    goToMenu();
-  });
+  const cameFromLesson = new URLSearchParams(window.location.search).has('lesson');
+
+  const url = new URL(window.location);
+  url.searchParams.delete('lesson');
+  url.searchParams.delete('mode');
+  window.history.replaceState({}, '', url);
+
+  stopCamera();
+  appScreen.classList.add('hidden');
+
+  if (cameFromLesson) {
+    // Si era in una lezione -> torna alla schermata di scelta lezione
+    lecturesScreen.classList.remove('hidden');
+    menuScreen.classList.add('hidden');
+  } else {
+    // Si era in free training -> torna al menu principale
+    menuScreen.classList.remove('hidden');
+    lecturesScreen.classList.add('hidden');
+  }
+});
 
   startBtn.addEventListener('click', toggleCamera);
 }
