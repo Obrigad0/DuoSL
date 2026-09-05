@@ -6,7 +6,7 @@ DuoSL - come avviare il test in standalone
    Crea un ambiente virtuale e installa le dipendenze:
 
      python -m venv venv
-     venv\Scriptsctivate          (Windows)
+     venv\Scripts\activate          (Windows)
      source venv/bin/activate       (Mac/Linux)
      pip install -r requirements.txt
 

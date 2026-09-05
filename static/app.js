@@ -43,7 +43,9 @@ function setStatus(msg) {
   captureText.textContent = `${msg.capturing ? 'Capturing' : 'Not Capturing'} · ${movement}`;
 
   if (msg.discarded && !pendingStepTimer) {
-    messageInput.value = 'Capture too short, discarded';
+    messageInput.value = msg.discarded === 'mani_non_visibili'
+      ? 'Hands not visible, capture discarded'
+      : 'Capture too short, discarded';
   }
 }
 
@@ -173,7 +175,7 @@ async function startCamera() {
         if (blob && ws.readyState === WebSocket.OPEN) {
           ws.send(blob);
         }
-      }, 'image/jpeg', 0.8);
+      }, 'image/jpeg', 0.92);
     }, interval);
 
     messageInput.value = 'Camera active. Sending frames to model...';

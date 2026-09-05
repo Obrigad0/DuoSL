@@ -85,7 +85,7 @@ PRE_ROLL_FRAMES = 3              # frame precedenti tenuti: il gesto inizia un a
 MOTION_WINDOW = 5                # su quanti frame si calcola il movimento (come l'originale)
 MAX_STORED_FRAMES = 30           # come nell'originale: tetto ai frame accumulati per una cattura
 EMA_ALPHA = 0.3
-JPEG_QUALITY = 80                # qualita' del frame annotato rimandato al client
+JPEG_QUALITY = 92                # qualita' del frame annotato rimandato al client
 
 # Layout dei landmark restituiti da extract_landmarks(): 86 punti in totale.
 LEFT_HAND_SLICE = slice(12, 33)   # 21 punti
@@ -122,6 +122,28 @@ def movement_score_masked(frames, left_flags, right_flags):
         diffs.append(float(np.sum(weighted)))
 
     return float(np.mean(diffs)) if diffs else 0.0
+
+
+def trim_to_hands(captured):
+    """
+    Taglia testa e coda del clip fino al primo e all'ultimo frame in cui una mano
+    e' stata rilevata, e restituisce i soli landmark.
+
+    `captured` e' una lista di coppie (landmarks, mano_presente).
+
+    Perche' tagliare solo le estremita' invece di togliere ovunque i frame senza mani:
+    i frame senza mani sono le fasi di riposo prima e dopo il segno (misurato sui clip
+    in lectures/demos/: nessun buco a meta' gesto). In quei frame extract_landmarks
+    riempie le 42 coordinate delle mani con (0,0), quindi finiscono nel modello come
+    dati finti. Tagliando solo le estremita' la temporizzazione interna del gesto non
+    viene mai alterata, nemmeno se un giorno una mano sparisse a meta' movimento.
+
+    Ritorna [] se nessun frame ha le mani.
+    """
+    presenti = [i for i, (_, mano) in enumerate(captured) if mano]
+    if not presenti:
+        return []
+    return [lm for lm, _ in captured[presenti[0]:presenti[-1] + 1]]
 
 
 def process_frame(frame_bgr):
@@ -244,6 +266,10 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket.send_json(lesson_payload(session.current_state()))
 
     # --- stato della segmentazione, per connessione ---
+    # Coppie (landmarks, mano_presente) invece di due liste parallele: il flag deve
+    # restare allineato ai landmark attraverso accumulo, taglio a MAX_STORED_FRAMES e
+    # reset dal pre-roll, e un disallineamento sarebbe un bug silenzioso (si taglierebbero
+    # i frame sbagliati senza errore). Con le coppie e' impossibile per costruzione.
     landmark_stored = []                              # clip della cattura in corso
     pre_roll = deque(maxlen=PRE_ROLL_FRAMES)          # frame appena precedenti all'inizio del gesto
     motion_frames = deque(maxlen=MOTION_WINDOW)       # finestra per il calcolo del movimento
@@ -278,10 +304,10 @@ async def websocket_endpoint(websocket: WebSocket):
             ema = ema_score if ema_score is not None else 0.0
             hand_visible = has_left or has_right
 
-            discarded = False
+            discarded = None
 
             if capturing:
-                landmark_stored.append(data_processed)
+                landmark_stored.append((data_processed, hand_visible))
                 if len(landmark_stored) > MAX_STORED_FRAMES:
                     landmark_stored = landmark_stored[-MAX_STORED_FRAMES:]
 
@@ -291,11 +317,21 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 if below_count >= EXIT_FRAMES:
                     # Gli ultimi EXIT_FRAMES frame sono la pausa che ha chiuso il gesto, non il gesto.
-                    clip = landmark_stored[:-EXIT_FRAMES] if len(landmark_stored) > EXIT_FRAMES else []
+                    catturati = landmark_stored[:-EXIT_FRAMES] if len(landmark_stored) > EXIT_FRAMES else []
+                    frame_catturati = len(catturati)
+                    # Taglio delle estremita' senza mani: DISATTIVATO.
+                    #    Per riattivarlo, sostituire la riga sotto con:
+                    #        clip = trim_to_hands(catturati)
+                    clip = [lm for lm, _ in catturati]
+                    # Vero solo se c'erano frame ma il taglio li ha tolti tutti: col taglio
+                    # spento e' sempre falso, e torna corretto da solo se lo si riaccende.
+                    senza_mani = bool(catturati) and len(clip) == 0
                     capturing = False
                     above_count = 0
                     below_count = 0
                     landmark_stored = []
+
+                    print(f"cattura: {frame_catturati} frame -> {len(clip)} classificati", flush=True)
 
                     if len(clip) >= MIN_CAPTURE_FRAMES:
                         # Se una classificazione precedente e' ancora in corso la si aspetta,
@@ -305,9 +341,9 @@ async def websocket_endpoint(websocket: WebSocket):
                             await classify_task
                         classify_task = asyncio.create_task(classify_and_enqueue(clip))
                     else:
-                        discarded = True
+                        discarded = "mani_non_visibili" if senza_mani else "troppo_breve"
             else:
-                pre_roll.append(data_processed)
+                pre_roll.append((data_processed, hand_visible))
 
                 # Debounce + gate sulle mani: niente Capturing per il solo movimento
                 # di busto o testa, e servono ENTER_FRAMES frame consecutivi.
