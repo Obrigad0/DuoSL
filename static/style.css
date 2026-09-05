@@ -64,21 +64,35 @@ header p {
    Si adatta alla larghezza dello schermo invece di essere fissa. */
 #menu-screen .app-container {
   max-width: min(1400px, 92vw);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
+/* Titolo principale, fissato in alto */
+#menu-screen .menu-page-title {
+  text-align: center;
+  font-size: 2.6rem;
+  color: #0f172a;
+  margin-top: 7vh;
+  margin-bottom: 0;
+}
+
+/* Le tre colonne occupano lo spazio restante e restano centrate al suo interno */
 #menu-screen .menu-layout {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 100px;
+  gap: 80px;
   flex-wrap: wrap;
   width: 100%;
 }
 
-/* Colonna sinistra: pannello informativo, dentro un riquadro */
+/* Colonna sinistra: pannello informativo, dentro un riquadro con lieve colore di sfondo */
 #menu-screen .info-side {
   flex: 1 1 220px;
-  background: #ffffff;
+  background: #f0fdfa;
   border: 1px solid #e2e8f0;
   border-radius: 16px;
   padding: 24px;
@@ -104,12 +118,6 @@ header p {
   display: flex;
   flex-direction: column;
   align-items: center;
-}
-
-#menu-screen .menu-title {
-  font-size: 2rem;
-  margin-bottom: 8px;
-  color: #0f172a;
 }
 
 #menu-screen .menu-subtitle {

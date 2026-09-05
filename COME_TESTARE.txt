@@ -13,7 +13,7 @@ DuoSL - come avviare il test in standalone
 2) AVVIA IL SERVER
    Dalla cartella principale del progetto, con l'ambiente attivo:
 
-     uvicorn server:app --host 0.0.0.0 --port 8000
+     uvicorn server:app --host 0.0.0.0 --port 8000 --reload
 
 3) APRI NEL BROWSER (serve una webcam vera, non funziona in browser sandbox/headless)
    http://localhost:8000/

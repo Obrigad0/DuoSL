@@ -14,21 +14,28 @@
   <!-- MENU INIZIALE -->
   <div id="menu-screen" class="screen">
     <div class="app-container">
-      <div class="menu-layout">
 
+      <!-- Titolo -->
+      <h1 class="menu-page-title">DuoSL – Sign Language Practice </h1>
+
+      <div class="menu-layout">
         <!-- Colonna sinistra: pannello informativo -->
         <div class="info-side">
           <h2 class="info-title">What's DuoSL</h2>
           <p class="info-text">
-            DuoSL è un'app per esercitarsi con la lingua dei segni in modo
-            interattivo: lezioni guidate passo-passo o allenamento libero
-            davanti alla webcam, con riconoscimento in tempo reale dei segni.
+            DuoSL is an app for practicing sign language interactively:
+            step-by-step guided lessons or free training
+            in front of the webcam, with real-time sign recognition.
+            <br><br>
+            Under the hood, DuoSL leverages state-of-the-art LLM-based
+            models, specifically trained to recognize hand gestures and
+            signs in real time, turning your webcam into a smart,
+            interactive sign language tutor.
           </p>
         </div>
 
-        <!-- Colonna centrale: titolo + bottoni -->
+        <!-- Colonna centrale: sottotitolo + bottoni -->
         <div class="center-side">
-          <h1 class="menu-title">Welcome in DuoSL</h1>
           <p class="menu-subtitle">Choose your mode to start practicing sign language</p>
           <div class="menu-buttons">
             <button id="lessons-btn">Lessons</button>
@@ -38,7 +45,7 @@
 
         <!-- Colonna destra: logo -->
         <div class="logo-side">
-          <img src="/static/owl-icon.png" alt="DuoSL owl logo" class="logo-img" />
+          <img src="/static/sign-language.png" alt="DuoSL sign logo" class="logo-img" />
         </div>
 
       </div>
