@@ -3,7 +3,7 @@
   "name": "Lesson 2",
   "steps": [
     { "gloss": "MY", "demo_url": "/demos/my.gif"},
-    { "gloss": "NAME", "display_text": "HOW", "demo_url": "/demos/name.gif" }
+    { "gloss": "NAME", "demo_url": "/demos/name.gif" }
     
   ]
 }
