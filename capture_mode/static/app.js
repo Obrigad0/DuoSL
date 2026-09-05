@@ -237,7 +237,7 @@ function goToMenu() {
   menuScreen.classList.remove('hidden');
 }
 
-// Inizializzazione: menu all'apertura, oppure lezione se presente in URL
+// Inizializzazione: controlla l'URL per aprire menu o un'altra schermata
 function init() {
   const params = new URLSearchParams(window.location.search);
   const lesson = params.get('lesson');
