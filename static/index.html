@@ -166,6 +166,13 @@
             </button>
           </div>
         </div>
+
+        <!-- Promemoria mostrati mentre la lezione e' in pausa, quando la demo
+             diventa l'elemento grande e l'utente la sta studiando -->
+        <ul class="demo-hints" id="demo-hints" hidden>
+          <li>The small details matter!</li>
+          <li>Which hand you use matters!</li>
+        </ul>
       </section>
 
       <!-- Colonna webcam: l'elemento dominante della schermata -->
@@ -201,6 +208,12 @@
             <div class="cover-actions" id="cover-actions"></div>
           </div>
         </div>
+
+        <button id="pause-lesson" class="pause-btn" type="button">
+          <svg class="icon icon-pause"><use href="#i-pause"></use></svg>
+          <svg class="icon icon-play"><use href="#i-play"></use></svg>
+          <span id="pause-label">Pause lesson</span>
+        </button>
       </section>
 
     </main>
@@ -222,6 +235,14 @@
       </div>
       <span class="fb-timer" id="fb-timer" aria-hidden="true"></span>
     </div>
+    </div>
+
+    <!-- Conto alla rovescia d'apertura: da' il tempo di mettersi in posa
+         prima che il riconoscimento cominci a valutare. -->
+    <div class="countdown" id="countdown" hidden>
+      <p class="cd-kicker">Get ready</p>
+      <p class="cd-number" id="cd-number">3</p>
+      <p class="cd-cheer" id="cd-cheer"></p>
     </div>
 
     <!-- Diagnostica: fuori dalla vista di chi impara, a portata di chi tara -->

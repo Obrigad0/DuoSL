@@ -99,13 +99,14 @@
      dell'altezza della camera e resta CENTRATA sulla sua altezza.
 
      I tre limiti dentro min() sono, nell'ordine:
-       - l'altezza che resta tolti barra, prompt, banner e margini (~21rem):
-         e' quello che evita lo scroll verticale su schermi bassi, dove un
-         semplice 60vh sforava;
+       - l'altezza che resta tolti barra, prompt, banner, il pulsante di
+         pausa sotto la webcam e i margini (misurati: cam-h + 372px, ~23.3rem,
+         qui arrotondati a 24rem per margine): e' quello che evita lo
+         scroll verticale su schermi bassi, dove un semplice 60vh sforava;
        - un tetto assoluto, per non gonfiarsi su monitor molto alti;
        - la larghezza disponibile: 4/3 (camera) + 0.74 (demo) = 2.07 volte
          l'altezza della camera, piu' i margini. */
-  --cam-h: max(200px, min(calc(100vh - 21rem), 560px, calc((100vw - 7rem) / 2.14)));
+  --cam-h: max(200px, min(calc(100vh - 24rem), 560px, calc((100vw - 7rem) / 2.14)));
   --demo-h: calc(var(--cam-h) * .74);
 }
 
@@ -584,9 +585,134 @@ button { font: inherit; color: inherit; }
   flex: none;
 }
 
-/* Altezza guidata, larghezza derivata dall'aspect-ratio */
-.demo-card { height: var(--demo-h); aspect-ratio: 1 / 1; }
-.cam-card  { height: var(--cam-h);  aspect-ratio: 4 / 3; }
+/* Larghezza e altezza sono ENTRAMBE esplicite invece di derivare l'una
+   dall'altra con aspect-ratio: e' cio' che permette di animarle insieme
+   quando i due box si scambiano di importanza mettendo in pausa. */
+.lesson-stage {
+  --demo-size: var(--demo-h);
+  --cam-size: var(--cam-h);
+}
+
+/* In pausa il riconoscimento e' fermo e l'utente sta studiando la demo:
+   quella diventa il box grande, la webcam si ritira. */
+.lesson-stage.is-paused {
+  --demo-size: calc(var(--cam-h) * .96);
+  --cam-size: calc(var(--cam-h) * .54);
+}
+
+.demo-card {
+  width: var(--demo-size);
+  height: var(--demo-size);
+  transition: width var(--dur-slow) var(--ease), height var(--dur-slow) var(--ease);
+}
+.cam-card {
+  width: calc(var(--cam-size) * 4 / 3);
+  height: var(--cam-size);
+  transition: width var(--dur-slow) var(--ease), height var(--dur-slow) var(--ease);
+}
+
+/* --- Pausa della lezione --- */
+.pause-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  margin: var(--s-3) auto 0;
+  padding: 9px var(--s-5);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--text-soft);
+  font-size: var(--t-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease),
+              color var(--dur-fast) var(--ease),
+              border-color var(--dur-fast) var(--ease);
+}
+.pause-btn:hover { border-color: var(--n-300); color: var(--text); }
+.pause-btn .icon { width: 15px; height: 15px; }
+.pause-btn .icon-play { display: none; }
+
+.pause-btn[aria-pressed="true"] {
+  background: var(--brand-700);
+  border-color: var(--brand-700);
+  color: var(--n-0);
+}
+.pause-btn[aria-pressed="true"] .icon-pause { display: none; }
+.pause-btn[aria-pressed="true"] .icon-play  { display: block; }
+
+/* Promemoria sotto la demo, solo a lezione in pausa */
+.demo-hints {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  margin-top: var(--s-3);
+  text-align: center;
+  animation: hints-in var(--dur-slow) var(--ease);
+}
+.demo-hints li {
+  font-size: var(--t-sm);
+  font-weight: 700;
+  color: var(--brand-700);
+}
+@keyframes hints-in { from { opacity: 0; transform: translateY(-6px); } }
+
+/* --- Conto alla rovescia d'apertura --- */
+.countdown {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-3);
+  /* Velo SCURO: su una pagina gia' chiara un velo chiaro era invisibile e
+     sembrava che si smorzasse solo la card della webcam. */
+  background: rgba(10, 17, 25, .66);
+  -webkit-backdrop-filter: blur(7px) saturate(.9);
+  backdrop-filter: blur(7px) saturate(.9);
+  animation: cd-in var(--dur-slow) var(--ease);
+}
+@keyframes cd-in { from { opacity: 0; } }
+
+.cd-kicker {
+  font-size: var(--t-sm);
+  font-weight: 800;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--brand-300);
+}
+
+.cd-number {
+  font-size: clamp(7rem, 22vw, 13rem);
+  font-weight: 800;
+  line-height: .9;
+  letter-spacing: -.04em;
+  color: var(--n-0);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 8px 40px rgba(0, 0, 0, .35);
+}
+/* La cifra entra in scala e resta piena quasi tutto il secondo: sfuma solo
+   sul finale, giusto per dare il ritmo senza restare illeggibile a meta'. */
+.cd-number.tick { animation: cd-tick 900ms var(--ease); }
+@keyframes cd-tick {
+  0%   { opacity: 0; transform: scale(1.45); }
+  18%  { opacity: 1; transform: scale(1); }
+  88%  { opacity: 1; transform: scale(1); }
+  100% { opacity: .55; transform: scale(.97); }
+}
+
+.cd-cheer {
+  max-width: 28ch;
+  text-align: center;
+  font-size: var(--t-lg);
+  font-weight: 600;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, .92);
+}
 
 /* Etichetta della card: dice cosa stai guardando senza rubare spazio */
 .card-tag {
@@ -647,7 +773,8 @@ button { font: inherit; color: inherit; }
 .demo-controls .icon { width: 15px; height: 15px; }
 /* Sempre raggiungibili da tastiera, non solo all'hover */
 .demo-card:hover .demo-controls,
-.demo-controls:focus-within { opacity: 1; }
+.demo-controls:focus-within,
+.is-paused .demo-controls { opacity: 1; }
 
 /* --- Card webcam --- */
 
@@ -696,6 +823,13 @@ button { font: inherit; color: inherit; }
 .cam-card[data-state="discarded"] .cam-ring {
   --ring: var(--n-400);
   border-width: 3px;
+}
+/* In pausa l'anello si spegne del tutto: e' il segnale che nulla viene
+   valutato, ed e' anche coerente col fatto che la card si e' rimpicciolita. */
+.cam-card[data-state="paused"] .cam-ring {
+  --ring: var(--n-500);
+  border-width: 2px;
+  border-style: dashed;
 }
 .cam-card[data-state="disconnected"] .cam-ring,
 .cam-card[data-state="denied"] .cam-ring,

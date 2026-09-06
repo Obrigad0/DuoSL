@@ -2,7 +2,7 @@
   "id": "lesson4",
   "name": "Lesson 4 - Feelings",
   "steps": [
-    { "gloss": "HOW1", "demo_url": "/demos/how.mp4"},
+    { "gloss": "HOW1", "display_text": "HOW", "demo_url": "/demos/how.mp4"},
     { "gloss": "YOU", "demo_url": "/demos/you.mp4" },
     { "gloss": "FEEL", "demo_url": "/demos/feel.mp4"},
     { "gloss": "ME", "demo_url": "/demos/me.mp4" },

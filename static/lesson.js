@@ -16,7 +16,37 @@ const SKIP_AFTER_WRONG = 2;      // errori consecutivi prima di offrire lo skip
 const HINT_MS = 2400;
 const VERDICT_HOLD_MS = 900;     // durata dell'anello colorato dopo un tentativo
 
+const CHEAT_AFTER_WRONG = 3;     // vedi _cheatAllows()
+const CHEAT_CHANCE = 0.5;
+
 const $ = (id) => document.getElementById(id);
+
+/**
+ * Cosa si dice quando un tentativo non viene riconosciuto.
+ *
+ * Non si nomina MAI il segno che il modello crede di aver visto: molto spesso
+ * il gesto dell'utente e' corretto ed e' il riconoscitore a sbagliare, e
+ * sentirsi dire "sembrava FINE" quando hai fatto bene demoralizza e basta.
+ * I messaggi salgono di concretezza a ogni tentativo e restano dalla parte
+ * dell'utente; dal terzo in poi si fanno brevi e la voce tace, per non
+ * ripetere la stessa frase all'infinito mentre si insiste.
+ */
+const WRONG_MESSAGES = [
+  { text: 'Almost! The small details make the difference, give it another go.', speak: true },
+  { text: 'Try again: drop your hands out of frame, then watch the demo closely.',
+    speak: true },
+  { text: 'Not yet, take your time and watch the demo closely.', speak: false },
+];
+
+/** Frasi del conto alla rovescia: una a caso, per non renderlo meccanico. */
+const CHEERS = [
+  'Take your time there is no rush.',
+  'Loosen your shoulders and breathe.',
+  'Make sure your hands fit in the frame.',
+  'Watch the demo, then make it your own.',
+  'Every repetition teaches your hands something.',
+  'Nobody signs it perfectly the first time.',
+];
 
 /** Testi degli scarti: sono suggerimenti, non errori dell'utente. */
 const DISCARD_HINT = {
@@ -33,7 +63,7 @@ const CAMERA_TROUBLE = {
   nocam: {
     icon: '#i-alert',
     title: 'No camera found',
-    text: 'Connect a webcam and try again — sign recognition needs a live video feed.',
+    text: 'Connect a webcam and try again sign recognition needs a live video feed.',
   },
   busy: {
     icon: '#i-alert',
@@ -68,6 +98,14 @@ export class LessonView {
       demoPlay: $('demo-play'),
       demoSlow: $('demo-slow'),
       demoMirror: $('demo-mirror'),
+
+      stage: document.querySelector('.lesson-stage'),
+      pauseBtn: $('pause-lesson'),
+      pauseLabel: $('pause-label'),
+      demoHints: $('demo-hints'),
+      countdown: $('countdown'),
+      cdNumber: $('cd-number'),
+      cdCheer: $('cd-cheer'),
 
       cam: $('cam-card'),
       webcam: $('webcam'),
@@ -109,6 +147,9 @@ export class LessonView {
     this.troubled = false;
     this.resumeAt = 0;   // step da ripristinare dopo una riconnessione
     this.userPausedDemo = false;
+    this.paused = false;          // lezione in pausa: riconoscimento fermo
+    this.countdownDone = false;
+    this.cdTimer = null;
 
     this.thresholds = { enter: 1.4, exit: 0.9 };  // sovrascritte da lesson_meta
     this.advanceTimer = null;
@@ -126,17 +167,59 @@ export class LessonView {
   // ------------------------------------------------------------------ ciclo
 
   mount() {
+    // Gli elementi della schermata vivono in index.html e NON vengono ricreati
+    // ad ogni lezione, mentre una LessonView nuova nasce ogni volta che si
+    // entra in una lezione. Senza questo AbortController i listener si
+    // accumulavano: alla seconda lezione un click ne eseguiva due, il toggle
+    // andava e tornava, e i pulsanti sembravano non rispondere.
+    this._ac = new AbortController();
+
     this.el.screen.classList.remove('hidden');
+    this._resetUi();
     this._wire();
     this._restorePrefs();
     this._start();
-    document.addEventListener('keydown', this._onKey);
+    document.addEventListener('keydown', this._onKey, { signal: this._ac.signal });
     this._installDevHook();
   }
 
+  /**
+   * Riporta il DOM condiviso allo stato di partenza.
+   *
+   * La schermata sta in index.html ed e' la stessa per tutte le lezioni: senza
+   * questo, entrando in una lezione nuova ci si ritrovava addosso la pausa, il
+   * pannello diagnostica o i suggerimenti lasciati aperti in quella prima.
+   */
+  _resetUi() {
+    this.paused = false;
+    this.countdownDone = false;
+    this.userPausedDemo = false;
+
+    this.el.stage.classList.remove('is-paused');
+    this.el.pauseBtn.setAttribute('aria-pressed', 'false');
+    this.el.pauseLabel.textContent = 'Pause lesson';
+    this.el.demoHints.hidden = true;
+    this.el.countdown.hidden = true;
+
+    this.el.debug.hidden = true;
+    this.el.debugToggle.setAttribute('aria-pressed', 'false');
+
+    this.el.demo.classList.remove('mirrored');
+    this.el.demoMirror.setAttribute('aria-pressed', 'false');
+    this.el.demoSlow.setAttribute('aria-pressed', 'false');
+    this.el.demoPlay.setAttribute('aria-pressed', 'false');
+    this.el.demo.playbackRate = 1;
+
+    this._hideFeedback();
+    this._hideHint();
+    this._hideCover();
+    this.el.progress.innerHTML = '';
+    this.el.count.textContent = '';
+    this.el.word.textContent = ' ';
+  }
+
   unmount() {
-    document.removeEventListener('keydown', this._onKey);
-    if (this._onVisible) document.removeEventListener('visibilitychange', this._onVisible);
+    if (this._ac) { this._ac.abort(); this._ac = null; }
     this._clearTimers();
     Speech.stop();
     if (this.session) { this.session.stop(); this.session = null; }
@@ -157,7 +240,7 @@ export class LessonView {
       onLesson: (m) => this._onLesson(m),
       onLessonMeta: (m) => this._onLessonMeta(m),
       onError: (kind) => this._onTrouble(kind),
-      onClose: () => this._onDisconnected(),
+      onClose: (event) => this._onDisconnected(event),
       onOpen: () => {
         // Il socket puo' aprirsi dopo che la camera e' gia' fallita: in quel
         // caso la lezione si carica, ma l'avviso sulla camera deve restare.
@@ -177,6 +260,7 @@ export class LessonView {
     this.currentIndex = 0;
     this.resumeAt = 0;
     this.captures = 0;
+    this.countdownDone = false;   // si riparte davvero da capo, conto compreso
     this._renderProgress();
     this._start();
   }
@@ -208,36 +292,38 @@ export class LessonView {
   // ------------------------------------------------------------------ setup
 
   _wire() {
-    this.el.exit.addEventListener('click', () => this.onExit());
+    const opt = { signal: this._ac.signal };
+    const on = (el, ev, fn) => el.addEventListener(ev, fn, opt);
 
-    this.el.voiceToggle.addEventListener('click', () => this._toggleVoice());
-    this.el.debugToggle.addEventListener('click', () => this._toggleDebug());
+    on(this.el.exit, 'click', () => this.onExit());
+    on(this.el.voiceToggle, 'click', () => this._toggleVoice());
+    on(this.el.debugToggle, 'click', () => this._toggleDebug());
+    on(this.el.pauseBtn, 'click', () => this._togglePause());
 
-    this.el.speakWord.addEventListener('click', () => {
+    on(this.el.speakWord, 'click', () => {
       // Richiesta esplicita: parla anche a dettatura spenta.
       const label = this._currentLabel();
       if (label) Speech.speakNow(label);
     });
 
-    this.el.demoPlay.addEventListener('click', () => this._toggleDemoPlay());
-    this.el.demoSlow.addEventListener('click', () => this._toggleDemoSlow());
-    this.el.demoMirror.addEventListener('click', () => this._toggleDemoMirror());
+    on(this.el.demoPlay, 'click', () => this._toggleDemoPlay());
+    on(this.el.demoSlow, 'click', () => this._toggleDemoSlow());
+    on(this.el.demoMirror, 'click', () => this._toggleDemoMirror());
 
-    this.el.fbAgain.addEventListener('click', () => this._watchAgain());
-    this.el.fbSkip.addEventListener('click', () => this._skip());
+    on(this.el.fbAgain, 'click', () => this._watchAgain());
+    on(this.el.fbSkip, 'click', () => this._skip());
 
     // Se il video finisce fuori loop (sorgente senza loop pulito), riparte.
-    this.el.demo.addEventListener('ended', () => this.el.demo.play().catch(() => {}));
+    on(this.el.demo, 'ended', () => this.el.demo.play().catch(() => {}));
 
     // Tornando su una scheda lasciata in secondo piano il browser ha sospeso
     // il video: senza questo la demo resta congelata e sembra rotta. Non si
     // tocca se e' stato l'utente a metterla in pausa.
-    this._onVisible = () => {
+    on(document, 'visibilitychange', () => {
       if (document.visibilityState !== 'visible') return;
       if (this.userPausedDemo || !this.el.demo.getAttribute('src')) return;
       this.el.demo.play().catch(() => {});
-    };
-    document.addEventListener('visibilitychange', this._onVisible);
+    });
   }
 
   _restorePrefsSafe(key, fallback) {
@@ -325,16 +411,24 @@ export class LessonView {
 
       // Tentativo non riconosciuto come il segno richiesto
       this.wrongStreak++;
+      this._updateDebug({ last: msg.last_gloss, conf: msg.last_confidence });
+
+      if (this._cheatAllows()) {
+        this._acceptAnyway(msg);
+        return;
+      }
+
       this._setCamState('wrong');
       this._hideHint();
+
+      const level = WRONG_MESSAGES[Math.min(this.wrongStreak, WRONG_MESSAGES.length) - 1];
       this._showFeedback({
         kind: 'wrong',
-        text: `Not quite — that looked like ${msg.last_gloss}`,
+        text: level.text,
         again: true,
         skip: this.wrongStreak >= SKIP_AFTER_WRONG,
       });
-      Speech.say(`Not quite. That looked like ${msg.last_gloss}`);
-      this._updateDebug({ last: msg.last_gloss, conf: msg.last_confidence });
+      if (level.speak) Speech.say(level.text);
       return;
     }
 
@@ -351,7 +445,7 @@ export class LessonView {
     const state = this.el.cam.dataset.state;
     const holding = state === 'correct' || state === 'wrong' || this.verdictTimer;
 
-    if (!holding && !this.completed && !this._coverVisible()) {
+    if (!holding && !this.completed && !this.paused && !this._coverVisible()) {
       this._setCamState(msg.capturing ? 'capturing' : 'ready');
     }
 
@@ -364,6 +458,7 @@ export class LessonView {
   _onTrouble(kind) {
     if (kind === 'socket') return;   // la chiusura arriva subito dopo, gestita li'
     this.troubled = true;
+    this._endCountdown();
     const info = CAMERA_TROUBLE[kind] || CAMERA_TROUBLE.unknown;
     this._setCamState(kind === 'denied' ? 'denied' : 'nocam');
     this.el.badgeText.textContent = 'Camera off';
@@ -375,10 +470,27 @@ export class LessonView {
     });
   }
 
-  _onDisconnected() {
+  _onDisconnected(event) {
     if (this.completed) return;      // la lezione e' finita: non e' un errore
+
+    this._endCountdown();
     this._setCamState('disconnected');
     this.el.badgeText.textContent = 'Disconnected';
+
+    // 1008 = il server ha rifiutato la lezione (gloss sconosciuto, id che non
+    // combacia col nome file...). Riconnettersi non servirebbe a nulla: senza
+    // distinguerlo l'utente vedeva "Connection lost" e uno schermo vuoto,
+    // senza mai sapere che il problema era nel file della lezione.
+    if (event && event.code === 1008) {
+      this._showCover({
+        icon: '#i-alert',
+        title: 'This lesson could not be loaded',
+        text: event.reason || 'The lesson file has a problem. Check it against the model vocabulary.',
+        actions: [{ label: 'Back to lessons', primary: true, onClick: () => this.onExit() }],
+      });
+      return;
+    }
+
     this._showCover({
       icon: '#i-alert',
       title: 'Connection lost',
@@ -420,6 +532,9 @@ export class LessonView {
     // Solo il nome del segno: la posizione nella lezione la dice gia' lo
     // stepper, e una frase lunga arriva quando l'utente ha gia' ricominciato.
     Speech.say(label);
+
+    // Alla prima comparsa di uno step si lascia il tempo di prepararsi.
+    this._runCountdown();
   }
 
   _renderProgress() {
@@ -525,6 +640,111 @@ export class LessonView {
     if (open) this._updateDebug({ state: this.el.cam.dataset.state });
   }
 
+  /* ------------------------------------------------------- pausa lezione */
+
+  /**
+   * Ferma il riconoscimento e scambia l'importanza dei due box: la demo
+   * diventa quella grande, la webcam si ritira. Serve perche' inquadrati si
+   * resta comunque, e senza pausa un gesto qualunque fatto mentre si studia
+   * il video verrebbe letto come un tentativo.
+   */
+  _togglePause() {
+    this.paused = !this.paused;
+
+    this.el.stage.classList.toggle('is-paused', this.paused);
+    this.el.pauseBtn.setAttribute('aria-pressed', String(this.paused));
+    this.el.pauseLabel.textContent = this.paused ? 'Resume lesson' : 'Pause lesson';
+    this.el.demoHints.hidden = !this.paused;
+
+    if (this.session) this.session.setPaused(this.paused);
+
+    if (this.paused) {
+      this._clearTimers();
+      this._hideFeedback();
+      this._hideHint();
+      this._setCamState('paused');
+      Speech.stop();
+      this.userPausedDemo = false;
+      this.el.demo.play().catch(() => {});   // la demo e' cio' che si sta studiando
+    } else {
+      this._setCamState('ready');
+    }
+  }
+
+  /* -------------------------------------------------- conto alla rovescia */
+
+  /** Da' il tempo di mettersi in posa prima che il riconoscimento valuti. */
+  _runCountdown() {
+    if (this.countdownDone || this.troubled) return;
+    this.countdownDone = true;
+
+    this.el.cdCheer.textContent = CHEERS[Math.floor(Math.random() * CHEERS.length)];
+    this.el.countdown.hidden = false;
+    if (this.session) this.session.setPaused(true);
+
+    let n = 3;
+    const tick = () => {
+      this.el.cdNumber.textContent = n > 0 ? String(n) : 'Go!';
+      this.el.cdNumber.classList.remove('tick');
+      void this.el.cdNumber.offsetWidth;        // riavvia l'animazione
+      this.el.cdNumber.classList.add('tick');
+
+      if (n === 0) {
+        this.cdTimer = setTimeout(() => { this.cdTimer = null; this._endCountdown(); }, 620);
+        return;
+      }
+      n--;
+      this.cdTimer = setTimeout(tick, 900);
+    };
+    tick();
+  }
+
+  _endCountdown() {
+    clearTimeout(this.cdTimer); this.cdTimer = null;
+    this.el.countdown.hidden = true;
+    // La pausa manuale, se nel frattempo e' stata scelta, ha la precedenza.
+    if (this.session && !this.paused) this.session.setPaused(false);
+  }
+
+  /* ----------------------------------------------------- indulgenza debug */
+
+  /**
+   * Accetta un tentativo sbagliato con probabilita' 50%, ma solo a pannello
+   * diagnostica aperto e solo quando si e' gia' al terzo errore o oltre sullo
+   * stesso segno — cioe' da quando il messaggio smette di cambiare e si
+   * capisce che il riconoscitore non ne vuole sapere.
+   *
+   * E' uno strumento di prova per non restare bloccati durante le demo, e
+   * infatti non lascia alcuna traccia a schermo: si comporta esattamente come
+   * un riconoscimento riuscito.
+   */
+  _cheatAllows() {
+    return !this.el.debug.hidden
+        && this.wrongStreak >= CHEAT_AFTER_WRONG
+        && Math.random() < CHEAT_CHANCE;
+  }
+
+  /** Fa passare lo step come riuscito: il server avanza con lo stesso comando dello skip. */
+  _acceptAnyway(msg) {
+    this.wrongStreak = 0;
+    this._setCamState('correct');
+    this._hideHint();
+    this._showFeedback({
+      kind: 'correct',
+      text: `Nice! ${msg.attempted_display}`,
+      autoMs: ADVANCE_DELAY_MS,
+    });
+    Speech.say('Correct');
+
+    // NON passa da _skip(): quello segnerebbe lo step come saltato, e qui
+    // invece deve risultare completato come qualunque altro.
+    this.advanceTimer = setTimeout(() => {
+      this.advanceTimer = null;
+      this._hideFeedback();
+      if (this.session) this.session.skip();
+    }, ADVANCE_DELAY_MS);
+  }
+
   _watchAgain() {
     this.userPausedDemo = false;
     this.el.demo.currentTime = 0;
@@ -547,6 +767,7 @@ export class LessonView {
     this._updateDebug({ state });
 
     const labels = {
+      paused: 'Paused',
       idle: 'Camera off',
       connecting: 'Starting camera…',
       ready: 'Ready',
@@ -750,6 +971,7 @@ export class LessonView {
     clearTimeout(this.advanceTimer); this.advanceTimer = null;
     clearTimeout(this.hintTimer);    this.hintTimer = null;
     clearTimeout(this.verdictTimer); this.verdictTimer = null;
+    clearTimeout(this.cdTimer);      this.cdTimer = null;
   }
 
   // ------------------------------------------------------------- sviluppo

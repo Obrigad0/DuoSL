@@ -52,6 +52,11 @@ export class SignSession {
     this.ws = null;
     this.timer = null;
     this.running = false;
+    // Quando e' true i frame non partono: il server non riceve nulla, quindi
+    // non segmenta e non classifica. Serve al conto alla rovescia iniziale e
+    // alla pausa della lezione, dove l'utente e' inquadrato ma sta guardando
+    // la demo, non eseguendo il segno.
+    this.paused = false;
 
     // I frame annotati arrivano gia' decodificati in ordine, ma createImageBitmap
     // e' asincrono: senza questo contatore un frame vecchio decodificato tardi
@@ -125,6 +130,9 @@ export class SignSession {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
+  /** Sospende/riprende l'invio dei frame senza toccare camera ne' socket. */
+  setPaused(on) { this.paused = !!on; }
+
   _command(payload) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(payload));
@@ -188,6 +196,7 @@ export class SignSession {
 
   _pump() {
     this.timer = setInterval(() => {
+      if (this.paused) return;
       if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
       if (!this.video.videoWidth) return;
 
