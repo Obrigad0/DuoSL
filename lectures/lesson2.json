@@ -1,9 +1,14 @@
 {
   "id": "lesson2",
-  "name": "Lesson 2",
+  "name": "Lesson 2 - People and Identity",
   "steps": [
-    { "gloss": "MY", "demo_url": "/demos/my.mp4"},
-    { "gloss": "NAME", "demo_url": "/demos/name.mp4" }
-    
+    { "gloss": "ME", "demo_url": "/demos/me.mp4"},
+    { "gloss": "HEARING", "demo_url": "/demos/hearing.mp4" },
+    { "gloss": "HE", "display_text": "S/HE", "demo_url": "/demos/he.mp4" },
+    { "gloss": "DEAF", "demo_url":"/demos/deaf.mp4" },
+    { "gloss": "MY", "demo_url": "/demos/my.mp4" },
+    { "gloss": "FAMILY", "demo_url": "/demos/family.mp4" },
+    { "gloss": "YOUR", "demo_url":"/demos/your.mp4" },
+    { "gloss": "FRIEND", "demo_url":"/demos/friend.mp4" }
   ]
 }

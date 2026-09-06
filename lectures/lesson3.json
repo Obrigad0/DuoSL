@@ -1,9 +1,14 @@
 {
   "id": "lesson3",
-  "name": "Lesson 3",
+  "name": "Lesson 3 - Interactions",
   "steps": [
-    { "gloss": "MY", "demo_url": "/demos/my.mp4"},
-    { "gloss": "NAME", "demo_url": "/demos/name.mp4" }
+    { "gloss": "PLEASE", "demo_url": "/demos/please.mp4"},
+    { "gloss": "AGAIN", "demo_url": "/demos/again.mp4" },
+    { "gloss": "FINGERSPELL", "demo_url": "/demos/fingerspell.mp4"},
+    { "gloss": "EXCUSE", "display_text": "EXCUSE ME", "demo_url": "/demos/excuse.mp4" },
+    { "gloss": "HELP", "demo_url": "/demos/help.mp4"},
+    { "gloss": "YES", "demo_url": "/demos/yes.mp4" },
+    { "gloss": "NO", "demo_url": "/demos/no.mp4"}
     
   ]
 }

@@ -1,0 +1,16 @@
+{
+  "id": "lesson4",
+  "name": "Lesson 4 - Feelings",
+  "steps": [
+    { "gloss": "HOW1", "demo_url": "/demos/how.mp4"},
+    { "gloss": "YOU", "demo_url": "/demos/you.mp4" },
+    { "gloss": "FEEL", "demo_url": "/demos/feel.mp4"},
+    { "gloss": "ME", "demo_url": "/demos/me.mp4" },
+    { "gloss": "FEEL", "demo_url": "/demos/feel.mp4"},
+    { "gloss": "HAPPY", "demo_url": "/demos/happy.mp4" },
+    { "gloss": "YOU", "demo_url": "/demos/you.mp4"},
+    { "gloss": "HURT", "demo_url": "/demos/hurt.mp4"},
+    { "gloss": "WHERE", "demo_url": "/demos/where.mp4" }
+
+  ]
+}

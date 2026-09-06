@@ -1,11 +1,13 @@
 {
   "id": "lesson1",
-  "name": "Test Lesson",
+  "name": "Lesson 1 - Introduction",
   "steps": [
     { "gloss": "HELLO", "demo_url": "/demos/hello.mp4"},
     { "gloss": "HOW1", "display_text": "HOW", "demo_url": "/demos/how.mp4" },
+    { "gloss": "YOU", "demo_url": "/demos/you.mp4" },
     { "gloss": "FINE2", "display_text": "FINE", "demo_url":"/demos/fine.mp4" },
-    { "gloss": "YES", "demo_url":"/demos/yes.mp4" },
-    { "gloss": "NO", "demo_url":"/demos/no.mp4" }
+    { "gloss": "YOUR", "demo_url":"/demos/your.mp4" },
+    { "gloss": "NAME", "demo_url": "/demos/name.mp4" },
+    { "gloss": "WHAT2", "display_text": "WHAT", "demo_url": "/demos/what2.mp4" }
   ]
 }
