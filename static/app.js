@@ -1,316 +1,165 @@
-const video = document.getElementById('webcam');
-const overlay = document.getElementById('overlay');
-const messageInput = document.getElementById('message');
-const startBtn = document.getElementById('start-btn');
-const captureDot = document.getElementById('capture-dot');
-const captureText = document.getElementById('capture-text');
+// static/app.js
+//
+// Punto d'ingresso: decide quale schermata mostrare e la tiene in vita.
+//
+//   ?lesson=<id>  -> schermata lezione   (LessonView, ridisegnata)
+//   ?mode=free    -> Free Training       (schermata di prova, in attesa del suo turno)
+//   nessuno       -> menu
 
-const menuScreen = document.getElementById('menu-screen');
-const appScreen = document.getElementById('app-screen');
-const lessonsBtn = document.getElementById('lessons-btn');
-const freeBtn = document.getElementById('free-btn');
-const backBtn = document.getElementById('back-btn');
+import { SignSession } from './session.js';
+import { LessonView } from './lesson.js';
 
-const lecturesScreen = document.getElementById('lectures-screen');
-const lecturesBackBtn = document.getElementById('lectures-back-btn');
-const lectureButtons = document.querySelectorAll('.lecture-btn');
+const $ = (id) => document.getElementById(id);
 
-let stream = null;
-let ws = null;
-let sendingInterval = null;
-let isCameraOn = false;
+const menuScreen = $('menu-screen');
+const lecturesScreen = $('lectures-screen');
+const appScreen = $('app-screen');
 
-const overlayCtx = overlay.getContext('2d');
+let lessonView = null;
 
-let frameSeq = 0;
+const show = (el) => el.classList.remove('hidden');
+const hide = (el) => el.classList.add('hidden');
 
-async function showAnnotatedFrame(blob) {
-  const seq = ++frameSeq;
-  const bitmap = await createImageBitmap(blob);
 
-  if (seq !== frameSeq) {
-    bitmap.close();
-    return;
-  }
+/* ============================== Free Training ==============================
+   Non ridisegnato in questo passaggio: stessa interfaccia di prima, ma la
+   camera e il socket passano ora da SignSession, condiviso con la lezione. */
 
-  if (overlay.width !== bitmap.width || overlay.height !== bitmap.height) {
-    overlay.width = bitmap.width;
-    overlay.height = bitmap.height;
-  }
-  overlayCtx.drawImage(bitmap, 0, 0);
-  bitmap.close();
-}
+const free = {
+  session: null,
+  cameraFailed: false,
 
-function setStatus(msg) {
-  captureDot.classList.toggle('active', msg.capturing);
-  const movement = typeof msg.movement === 'number' ? msg.movement.toFixed(2) : '--';
-  captureText.textContent = `${msg.capturing ? 'Capturing' : 'Not Capturing'} · ${movement}`;
+  start() {
+    if (this.session && this.session.isRunning) return;
+    this.cameraFailed = false;
 
-  if (msg.discarded && !pendingStepTimer) {
-    messageInput.value = msg.discarded === 'mani_non_visibili'
-      ? 'Hands not visible, capture discarded'
-      : 'Capture too short, discarded';
-  }
-}
-
-const STEP_ADVANCE_DELAY_MS = 1200;
-let pendingStepTimer = null;
-
-function stepPrompt(msg) {
-  return msg.completed
-    ? 'Lesson completed!'
-    : `Step ${msg.step_index + 1}/${msg.total_steps} — Do: ${msg.target_display}`;
-}
-
-function showLesson(msg) {
-  if (pendingStepTimer) {
-    clearTimeout(pendingStepTimer);
-    pendingStepTimer = null;
-  }
-
-  if (!msg.attempted_display) {
-    messageInput.value = stepPrompt(msg);
-    return;
-  }
-
-  if (msg.correct) {
-    messageInput.value = `✓ Step ${msg.step_index}/${msg.total_steps} — ${msg.attempted_display} correct!`;
-    pendingStepTimer = setTimeout(() => {
-      pendingStepTimer = null;
-      messageInput.value = stepPrompt(msg);
-    }, STEP_ADVANCE_DELAY_MS);
-    return;
-  }
-
-  messageInput.value = `${stepPrompt(msg)} — recognized: ${msg.last_gloss} ✗`;
-}
-
-function resizeOverlay() {
-  if (!video.videoWidth) return;
-  overlay.width = video.videoWidth;
-  overlay.height = video.videoHeight;
-}
-
-video.addEventListener('loadeddata', resizeOverlay);
-
-function connectWebSocket() {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const host = window.location.host || 'localhost:8001';
-  const lesson = new URLSearchParams(window.location.search).get('lesson');
-  const wsUrl = lesson ? `${protocol}//${host}/ws?lesson=${encodeURIComponent(lesson)}` : `${protocol}//${host}/ws`;
-  ws = new WebSocket(wsUrl);
-
-  ws.onopen = () => {
-    console.log('WebSocket connected');
-    messageInput.value = 'Connected to sign model.';
-  };
-
-  ws.onmessage = (event) => {
-    if (event.data instanceof Blob) {
-      showAnnotatedFrame(event.data);
-      return;
-    }
-
-    const msg = JSON.parse(event.data);
-    if (msg.error) {
-      messageInput.value = `Error: ${msg.error}`;
-      return;
-    }
-
-    if (msg.type === 'status') {
-      setStatus(msg);
-      return;
-    }
-
-    if (msg.type === 'lesson') {
-      showLesson(msg);
-      return;
-    }
-
-    // type === 'recognition' (free mode)
-    const { gloss, confidence } = msg;
-    messageInput.value = `Detected sign: ${gloss} (conf: ${(confidence * 100).toFixed(0)}%)`;
-  };
-
-  ws.onclose = (event) => {
-    console.log('WebSocket closed');
-    messageInput.value = event.reason ? `Disconnected: ${event.reason}` : 'Disconnected from model server.';
-  };
-
-  ws.onerror = (err) => {
-    console.error('WebSocket error:', err);
-    messageInput.value = 'WebSocket error.';
-  };
-}
-
-async function startCamera() {
-  if (stream) return;
-
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        width: { ideal: 640 },
-        height: { ideal: 480 },
-        facingMode: 'user'
+    this.session = new SignSession({
+      lesson: null,
+      video: $('free-webcam'),
+      canvas: $('free-overlay'),
+      // Il socket si apre prima che la camera risponda: se il permesso e' stato
+      // negato, "Connected" non deve cancellare l'avviso.
+      onOpen: () => {
+        if (this.cameraFailed) return;
+        $('message').value = 'Connected to sign model.';
       },
-      audio: false
+      onStatus: (m) => {
+        $('capture-dot').classList.toggle('active', m.capturing);
+        const movement = typeof m.movement === 'number' ? m.movement.toFixed(2) : '--';
+        $('capture-text').textContent = `${m.capturing ? 'Capturing' : 'Not Capturing'} · ${movement}`;
+        if (m.discarded) {
+          $('message').value = m.discarded === 'mani_non_visibili'
+            ? 'Hands not visible, capture discarded'
+            : 'Capture too short, discarded';
+        }
+      },
+      onRecognition: (m) => {
+        $('message').value = `Detected sign: ${m.gloss} (conf: ${(m.confidence * 100).toFixed(0)}%)`;
+      },
+      onClose: () => { $('message').value = 'Disconnected from model server.'; },
+      onError: (kind) => {
+        if (kind === 'socket') return;
+        this.cameraFailed = true;
+        $('message').value = kind === 'denied'
+          ? 'Camera permission denied — allow access and press Start again.'
+          : 'Error: could not access webcam.';
+      },
     });
 
-    video.srcObject = stream;
-    await video.play();
-    resizeOverlay();
+    this.session.start();
+    $('message').value = 'Camera active. Sending frames to model...';
+    $('start-btn').textContent = 'Stop Camera';
+  },
 
-    connectWebSocket();
+  stop() {
+    if (this.session) { this.session.stop(); this.session = null; }
+    $('message').value = '';
+    $('capture-text').textContent = 'Not Capturing';
+    $('capture-dot').classList.remove('active');
+    $('start-btn').textContent = 'Start Camera';
+  },
 
-    const fps = 20;
-    const interval = 1000 / fps;
+  toggle() {
+    if (this.session && this.session.isRunning) this.stop();
+    else this.start();
+  },
+};
 
-    sendingInterval = setInterval(() => {
-      if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      if (!video.videoWidth) return;
 
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+/* ================================ Navigazione ============================= */
 
-      canvas.toBlob((blob) => {
-        if (blob && ws.readyState === WebSocket.OPEN) {
-          ws.send(blob);
-        }
-      }, 'image/jpeg', 0.92);
-    }, interval);
+function goToLesson(lessonId) {
+  hide(menuScreen);
+  hide(lecturesScreen);
+  hide(appScreen);
 
-    messageInput.value = 'Camera active. Sending frames to model...';
-    startBtn.textContent = 'Stop Camera';
-    startBtn.disabled = false;
-    isCameraOn = true;
-  } catch (err) {
-    console.error('Error accessing webcam:', err);
-    messageInput.value = 'Error: could not access webcam.';
-  }
+  lessonView = new LessonView(lessonId, { onExit: leaveLesson });
+  lessonView.mount();
 }
 
-function stopCamera() {
-  if (sendingInterval) {
-    clearInterval(sendingInterval);
-    sendingInterval = null;
-  }
-  if (ws) {
-    ws.close();
-    ws = null;
-  }
-  if (stream) {
-    stream.getTracks().forEach(track => track.stop());
-    stream = null;
-  }
-  if (video.srcObject) {
-    video.srcObject = null;
-  }
+function leaveLesson() {
+  if (lessonView) { lessonView.unmount(); lessonView = null; }
 
-  // Invalida eventuali frame ancora in arrivo/in elaborazione
-  frameSeq++;
+  const url = new URL(location);
+  url.searchParams.delete('lesson');
+  history.replaceState({}, '', url);
 
-  // Pulisce il canvas overlay, altrimenti resta visibile l'ultimo frame ricevuto
-  overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
-
-  messageInput.value = '';
-  captureText.textContent = 'Not Capturing';
-  captureDot.classList.remove('active');
-
-  startBtn.textContent = 'Start Camera';
-  startBtn.disabled = false;
-  isCameraOn = false;
+  show(lecturesScreen);
 }
 
-function toggleCamera() {
-  if (isCameraOn) {
-    stopCamera();
-  } else {
-    startCamera();
-  }
+function goToFree() {
+  hide(menuScreen);
+  hide(lecturesScreen);
+  show(appScreen);
 }
 
-function goToApp() {
-  menuScreen.classList.add('hidden');
-  appScreen.classList.remove('hidden');
+function leaveFree() {
+  free.stop();
+  hide(appScreen);
+
+  const url = new URL(location);
+  url.searchParams.delete('mode');
+  history.replaceState({}, '', url);
+
+  show(menuScreen);
 }
 
-function goToMenu() {
-  stopCamera();
-  appScreen.classList.add('hidden');
-  menuScreen.classList.remove('hidden');
-}
 
-function goToLectures() {
-  menuScreen.classList.add('hidden');
-  lecturesScreen.classList.remove('hidden');
-}
+/* =============================== Avvio =================================== */
 
-function goToMenuFromLectures() {
-  lecturesScreen.classList.add('hidden');
-  menuScreen.classList.remove('hidden');
-}
-
-// Inizializzazione: controlla l'URL per aprire menu o un'altra schermata
 function init() {
-  const params = new URLSearchParams(window.location.search);
+  const params = new URLSearchParams(location.search);
   const lesson = params.get('lesson');
   const mode = params.get('mode');
 
-  if (lesson || mode === 'free') {
-    // Arriviamo direttamente su una lezione o sul free training
-    menuScreen.classList.add('hidden');
-    lecturesScreen.classList.add('hidden');
-    appScreen.classList.remove('hidden');
-  } else {
-    // Stato iniziale: menu
-    menuScreen.classList.remove('hidden');
-    lecturesScreen.classList.add('hidden');
-    appScreen.classList.add('hidden');
-  }
+  // Menu e selezione lezione: comportamento invariato
+  $('lessons-btn').addEventListener('click', () => { hide(menuScreen); show(lecturesScreen); });
+  $('lectures-back-btn').addEventListener('click', () => { hide(lecturesScreen); show(menuScreen); });
+  $('free-btn').addEventListener('click', () => { location.search = 'mode=free'; });
 
-  // "Lessons" ora apre la schermata di scelta lezione, senza ricaricare la pagina
-  lessonsBtn.addEventListener('click', goToLectures);
-
-  // Ogni bottone Lecture N ricarica la pagina con ?lesson=lessonN
-  lectureButtons.forEach((btn) => {
+  document.querySelectorAll('.lecture-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const lessonId = btn.dataset.lesson;
-      window.location.search = `lesson=${encodeURIComponent(lessonId)}`;
+      // Niente ricarica: la lezione e' una schermata, non una pagina.
+      const id = btn.dataset.lesson;
+      const url = new URL(location);
+      url.searchParams.set('lesson', id);
+      history.pushState({}, '', url);
+      goToLesson(id);
     });
   });
 
-  lecturesBackBtn.addEventListener('click', goToMenuFromLectures);
+  $('start-btn').addEventListener('click', () => free.toggle());
+  $('back-btn').addEventListener('click', leaveFree);
 
-  freeBtn.addEventListener('click', () => {
-    window.location.search = 'mode=free';
-  });
-
-  backBtn.addEventListener('click', () => {
-  const cameFromLesson = new URLSearchParams(window.location.search).has('lesson');
-
-  const url = new URL(window.location);
-  url.searchParams.delete('lesson');
-  url.searchParams.delete('mode');
-  window.history.replaceState({}, '', url);
-
-  stopCamera();
-  appScreen.classList.add('hidden');
-
-  if (cameFromLesson) {
-    // Si era in una lezione -> torna alla schermata di scelta lezione
-    lecturesScreen.classList.remove('hidden');
-    menuScreen.classList.add('hidden');
+  if (lesson) {
+    goToLesson(lesson);
+  } else if (mode === 'free') {
+    goToFree();
   } else {
-    // Si era in free training -> torna al menu principale
-    menuScreen.classList.remove('hidden');
-    lecturesScreen.classList.add('hidden');
+    show(menuScreen);
+    hide(lecturesScreen);
+    hide(appScreen);
   }
-});
-
-  startBtn.addEventListener('click', toggleCamera);
 }
 
 init();

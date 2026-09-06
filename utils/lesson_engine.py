@@ -20,6 +20,7 @@ import numpy as np
 class LessonStep:
     gloss: str
     display_text: Optional[str] = None
+    demo_url: Optional[str] = None
 
     def label(self) -> str:
         return self.display_text or self.gloss
@@ -62,9 +63,27 @@ def load_lesson(name: str, gloss_to_index: dict, lectures_dir: str = "lectures")
             raise LessonLoadError(
                 f"Lesson '{name}' step {i}: unknown gloss '{gloss}' (not in model vocabulary)"
             )
-        steps.append(LessonStep(gloss=gloss, display_text=raw_step.get("display_text")))
+        steps.append(LessonStep(
+            gloss=gloss,
+            display_text=raw_step.get("display_text"),
+            demo_url=raw_step.get("demo_url"),
+        ))
 
     return Lesson(id=lesson_id, name=raw.get("name", lesson_id), steps=steps)
+
+
+def steps_payload(lesson: Lesson) -> list[dict]:
+    """
+    Elenco completo degli step, spedito UNA volta alla connessione.
+
+    Serve al client per due cose che non puo' ricavare dai messaggi per-cattura:
+    disegnare subito la barra di progresso con tutti i segmenti, e precaricare
+    il video dello step successivo mentre si e' ancora su quello corrente.
+    """
+    return [
+        {"gloss": s.gloss, "display": s.label(), "demo_url": s.demo_url}
+        for s in lesson.steps
+    ]
 
 
 @dataclass
@@ -78,6 +97,7 @@ class CaptureResult:
     total_steps: int
     target_gloss: Optional[str]
     target_display: Optional[str]
+    target_demo_url: Optional[str]
     attempted_gloss: Optional[str]
     attempted_display: Optional[str]
     last_gloss: str
@@ -112,6 +132,7 @@ class LessonSession:
             total_steps=len(self.lesson.steps),
             target_gloss=step.gloss if step else None,
             target_display=step.label() if step else None,
+            target_demo_url=step.demo_url if step else None,
             attempted_gloss=None,
             attempted_display=None,
             last_gloss="",
@@ -120,6 +141,48 @@ class LessonSession:
             advanced=False,
             completed=self.completed,
         )
+
+    def skip_step(self) -> CaptureResult:
+        """
+        Avanza senza che il segno sia stato riconosciuto.
+
+        Serve perche' il modello non e' infallibile su 209 glosse: senza una via
+        d'uscita un segno che non viene mai riconosciuto blocca la lezione.
+        Il risultato NON e' marcato `correct`, cosi' resta distinguibile da un
+        successo vero da chiunque conti i progressi.
+        """
+        if self.current_step is not None:
+            self.current_step_index += 1
+            if self.current_step_index >= len(self.lesson.steps):
+                self.completed = True
+
+        step = self.current_step
+        return CaptureResult(
+            step_index=self.current_step_index,
+            total_steps=len(self.lesson.steps),
+            target_gloss=step.gloss if step else None,
+            target_display=step.label() if step else None,
+            target_demo_url=step.demo_url if step else None,
+            attempted_gloss=None,
+            attempted_display=None,
+            last_gloss="",
+            last_confidence=0.0,
+            correct=False,
+            advanced=True,
+            completed=self.completed,
+        )
+
+    def goto_step(self, index: int) -> CaptureResult:
+        """
+        Riporta la sessione a uno step preciso.
+
+        Serve alla riconnessione: il socket che cade crea una sessione nuova
+        lato server, e senza questo l'utente ripartirebbe da capo perdendo tutto
+        quello che aveva gia' fatto. Il client dice a che punto era.
+        """
+        self.current_step_index = max(0, min(int(index), len(self.lesson.steps)))
+        self.completed = self.current_step_index >= len(self.lesson.steps)
+        return self.current_state()
 
     def on_capture(self, prediction_vector: np.ndarray) -> CaptureResult:
         """Chiamato una volta per ogni gesto isolato catturato (movimento iniziato e poi fermato)."""
@@ -135,6 +198,7 @@ class LessonSession:
                 total_steps=len(self.lesson.steps),
                 target_gloss=None,
                 target_display=None,
+                target_demo_url=None,
                 attempted_gloss=None,
                 attempted_display=None,
                 last_gloss=last_gloss,
@@ -158,6 +222,7 @@ class LessonSession:
             total_steps=len(self.lesson.steps),
             target_gloss=next_step.gloss if next_step else None,
             target_display=next_step.label() if next_step else None,
+            target_demo_url=next_step.demo_url if next_step else None,
             attempted_gloss=attempted.gloss,
             attempted_display=attempted.label(),
             last_gloss=last_gloss,

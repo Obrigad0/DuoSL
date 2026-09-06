@@ -18,40 +18,91 @@ DuoSL - come avviare il test in standalone
 3) APRI NEL BROWSER (serve una webcam vera, non funziona in browser sandbox/headless)
    http://localhost:8000/
    Dal menu iniziale scegli "Lessons" oppure "Free Training".
-   Premi "Start Camera" e concedi il permesso webcam.
 
-4) COME FUNZIONA IL RICONOSCIMENTO
-   L'indicatore in alto a sinistra sul video mostra lo stato:
-     - "Not Capturing" (pallino rosso): sei fermo, non sta registrando
-     - "Capturing" (pallino verde): ha rilevato movimento e sta accumulando i frame
-   Accanto c'e' un numero: e' il valore di movimento in tempo reale (serve per la taratura).
-
-   Il modello NON viene interrogato ad ogni frame: accumula i frame mentre ti muovi
-   e classifica UNA volta sola quando ti fermi, sul gesto completo. Quindi il verdetto
-   arriva quando finisci il segno, non mentre lo stai facendo.
-
-5) MODALITA' LEZIONE
-   Una lezione e' una sequenza di segni. Il campo di testo dice quale fare
-   ("Step 1/3 - Fai: HELLO"). Quando lo esegui correttamente conferma
-   ("OK Step 1/3 - HELLO corretto!") e dopo un attimo passa al successivo.
+   In LEZIONE la camera parte da sola: il browser chiede il permesso appena
+   entri. In FREE TRAINING resta il pulsante "Start Camera".
    URL diretto di una lezione: http://localhost:8000/?lesson=<nome_file_senza_json>
 
-6) TARARE LA SENSIBILITA' (file server.py, sezione "costanti tunabili")
+4) COME FUNZIONA IL RICONOSCIMENTO
+   Il modello NON viene interrogato ad ogni frame: accumula i frame mentre ti
+   muovi e classifica UNA volta sola quando ti fermi, sul gesto completo.
+   Quindi il verdetto arriva quando finisci il segno, non mentre lo stai facendo.
+
+5) LA SCHERMATA DI LEZIONE
+   In alto e al centro, in grande, il SEGNO DA FARE: e' l'informazione piu'
+   importante e sta dove si trova subito.
+   Sotto: a destra la tua webcam (l'elemento piu' grande, sei tu il centro
+   dell'attenzione), a sinistra la demo del segno, piu' piccola, allineata
+   sulla stessa base.
+
+   In alto la barra a pallini dice a che punto sei: pallino pieno con spunta
+   = fatto, pallino grande con alone = dove sei adesso (col nome del segno
+   sotto), contorno grigio = ancora da fare, contorno chiaro = saltato.
+
+   Lo stato della cattura e' l'ANELLO attorno al tuo video, non un pannello di
+   testo: e' li' perche' mentre pratichi stai gia' guardando quel punto.
+     - bordo sottile grigio  -> fermo, non sta registrando
+     - bordo teal pulsante   -> ha rilevato movimento e sta accumulando
+     - verde con spunta      -> segno riconosciuto, avanza da solo
+     - ambra con freccia     -> non riconosciuto, ti dice cosa ha letto invece
+
+   Sotto la demo: pausa, 0.5x (rallentatore) e specchia la demo.
+   Dopo due tentativi non riusciti compare "Skip this sign": serve perche' il
+   modello non e' infallibile e un segno che non passa non deve bloccarti.
+
+   Il pulsante "Voice off / Voice on" in alto a destra accende la lettura del
+   segno ad alta voce. Se sul sistema non ci sono voci inglesi installate viene
+   usata la voce predefinita (in italiano): pronuncia comunque i nomi dei segni.
+   L'icona dell'altoparlante accanto alla parola la ripete su richiesta, anche
+   a dettatura spenta.
+   "Debug" accanto apre la diagnostica descritta al punto 6: serve a tarare le
+   soglie, non alla lezione.
+
+   Se cade la connessione, "Reconnect" riprende dallo step in cui eri: non
+   ricomincia da capo.
+
+   Scorciatoie da tastiera:
+     Spazio  pausa/riprendi la demo      V  dettatura vocale on/off
+     R       rivedi la demo al rallentatore   D  pannello diagnostica
+     S       salta lo step (quando offerto)   Esc  esci dalla lezione
+
+6) TARARE LA SENSIBILITA'
+   Premi D (o l'icona dei cursori in alto a destra) per aprire la diagnostica:
+   mostra il movimento in tempo reale come barra, con le DUE SOGLIE disegnate
+   sopra, piu' stato, ultima predizione, confidenza e motivo dello scarto.
+   Sta fuori dalla vista di chi impara ed e' a portata di chi tara.
+
+   Le costanti stanno in server.py, sezione "costanti tunabili":
      MOVEMENT_ENTER_THRESHOLD  -> quanto movimento serve per iniziare a catturare
      MOVEMENT_EXIT_THRESHOLD   -> sotto quale valore si considera che ti sei fermato
      ENTER_FRAMES / EXIT_FRAMES-> quanti frame consecutivi servono per iniziare/chiudere
      MIN_CAPTURE_FRAMES        -> catture piu' corte di cosi' vengono scartate
      REQUIRE_HAND              -> se True non cattura senza almeno una mano inquadrata
-   Guarda il numero di movimento mostrato a schermo stando fermo e facendo un segno,
-   e regola le due soglie di conseguenza. Poi riavvia il server.
+   Guarda dove arriva la barra stando fermo e facendo un segno, regola le due
+   soglie di conseguenza, poi RIAVVIA il server (il pannello le rilegge da li').
 
 7) CREARE UNA NUOVA LEZIONE
-   Copia lectures/test_lesson.json, cambia:
-     "id": deve combaciare col nome del file (senza .json)
-     "steps": lista di segni, il campo "gloss" deve esistere in
-              models/index_to_gloss_200.json (vocabolario del modello, ~209 segni in inglese)
+   Copia lectures/lesson1.json, cambia:
+     "id":       deve combaciare col nome del file (senza .json)
+     "steps":    lista di segni; "gloss" deve esistere in
+                 models/index_to_gloss_200.json (~209 segni in inglese)
+     "display_text": facoltativo, come mostrare il gloss all'utente
+                 (es. gloss "HOW1" -> display_text "HOW"). E' anche il testo
+                 che viene pronunciato dalla dettatura vocale.
+     "demo_url": video della demo, servito da lectures/demos/
 
-8) FERMARE IL SERVER
+8) I VIDEO DELLE DEMO
+   Vanno in lectures/demos/ e sono referenziati come /demos/<nome>.mp4
+   Formato: MP4 H.264. Le proporzioni possono essere qualsiasi (il pannello e'
+   quadrato e adatta il video senza tagliarlo). Per alleggerire un sorgente:
+
+     ffmpeg -i input.mp4 -an -vf "scale=480:480:force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2" \
+            -c:v libx264 -crf 23 -pix_fmt yuv420p -movflags +faststart lectures/demos/nome.mp4
+
+   Servono video e non GIF perche' una GIF nel browser non si puo' ne' mettere
+   in pausa ne' rallentare: non esiste API per farlo.
+
+9) FERMARE IL SERVER
    Ctrl+C nel terminale dove gira uvicorn.
 
 NOTA: non serve nessuna API key ne' file .env - il server non usa servizi esterni.

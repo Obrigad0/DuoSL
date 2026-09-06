@@ -39,6 +39,10 @@ LECTURES_DIR = BASE_DIR / "lectures"
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+# I video dimostrativi dei segni stanno accanto alle lezioni che li referenziano
+# (lectures/demos/), non in static/: il campo "demo_url" nei JSON delle lezioni
+# punta qui. Senza questo mount il pannello demo non ha nulla da caricare.
+app.mount("/demos", StaticFiles(directory=str(LECTURES_DIR / "demos")), name="demos")
 
 
 @app.middleware("http")
@@ -198,6 +202,7 @@ def lesson_payload(result):
         "total_steps": result.total_steps,
         "target_gloss": result.target_gloss,
         "target_display": result.target_display,
+        "target_demo_url": result.target_demo_url,
         "attempted_gloss": result.attempted_gloss,
         "attempted_display": result.attempted_display,
         "last_gloss": result.last_gloss,
@@ -228,26 +233,53 @@ async def websocket_endpoint(websocket: WebSocket):
     latest_frame = {"data": None}
     disconnected = False
 
+    # La classificazione (~90ms) gira in un task a parte e deposita il risultato qui:
+    # se restasse dentro il loop, ad ogni gesto il video si fermerebbe per quei 90ms.
+    # I messaggi vengono comunque spediti dal loop principale, cosi' non ci sono
+    # send concorrenti sullo stesso websocket. Vale anche per i comandi del client
+    # gestiti dal receiver: anche loro depositano qui invece di spedire da soli.
+    results_queue = asyncio.Queue()
+    classify_task = None
+
     async def receiver():
+        # Il client manda due cose sullo stesso socket: i frame (binari) e i
+        # comandi (JSON testuale, per ora solo "skip"), quindi qui si usa
+        # receive() generico invece di receive_bytes().
         nonlocal disconnected
         try:
             while True:
-                image_bytes = await websocket.receive_bytes()
-                nparr = np.frombuffer(image_bytes, np.uint8)
-                frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-                if frame is not None:
-                    latest_frame["data"] = frame
+                message = await websocket.receive()
+
+                if message["type"] == "websocket.disconnect":
+                    disconnected = True
+                    return
+
+                if message.get("bytes") is not None:
+                    nparr = np.frombuffer(message["bytes"], np.uint8)
+                    frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                    if frame is not None:
+                        latest_frame["data"] = frame
+                    continue
+
+                if message.get("text") is not None:
+                    try:
+                        command = json.loads(message["text"])
+                    except json.JSONDecodeError:
+                        continue
+                    if session is None:
+                        continue
+                    if command.get("type") == "skip":
+                        await results_queue.put(lesson_payload(session.skip_step()))
+                    elif command.get("type") == "goto":
+                        # Riconnessione: il client dice a che step era arrivato,
+                        # cosi' non riparte da zero.
+                        await results_queue.put(
+                            lesson_payload(session.goto_step(command.get("index", 0)))
+                        )
         except Exception:
             disconnected = True
 
     receiver_task = asyncio.create_task(receiver())
-
-    # La classificazione (~90ms) gira in un task a parte e deposita il risultato qui:
-    # se restasse dentro il loop, ad ogni gesto il video si fermerebbe per quei 90ms.
-    # I messaggi vengono comunque spediti dal loop principale, cosi' non ci sono
-    # send concorrenti sullo stesso websocket.
-    results_queue = asyncio.Queue()
-    classify_task = None
 
     async def classify_and_enqueue(clip):
         prediction = await asyncio.to_thread(classify_capture, clip)
@@ -260,9 +292,25 @@ async def websocket_endpoint(websocket: WebSocket):
             gloss = encoder.get(str(predicted_index), "UNKNOWN")
             await results_queue.put({"type": "recognition", "gloss": gloss, "confidence": confidence})
 
-    # Messaggio iniziale: dice subito qual e' il primo segno da fare,
-    # senza aspettare il primo tentativo.
+    # Due messaggi iniziali, spediti prima che arrivi un solo frame:
+    #   lesson_meta -> l'intera lezione, cosi' il client puo' disegnare subito
+    #                  tutti i segmenti della barra di progresso e precaricare
+    #                  il video dello step successivo;
+    #   lesson      -> qual e' il primo segno da fare, senza aspettare un tentativo.
     if session is not None:
+        await websocket.send_json({
+            "type": "lesson_meta",
+            "lesson_id": session.lesson.id,
+            "name": session.lesson.name,
+            "steps": lesson_engine.steps_payload(session.lesson),
+            # Il pannello diagnostica disegna le soglie sopra la barra del
+            # movimento. Vengono da qui e non duplicate nel client, altrimenti
+            # basta ritoccarle sopra perche' il pannello menta.
+            "thresholds": {
+                "enter": MOVEMENT_ENTER_THRESHOLD,
+                "exit": MOVEMENT_EXIT_THRESHOLD,
+            },
+        })
         await websocket.send_json(lesson_payload(session.current_state()))
 
     # --- stato della segmentazione, per connessione ---
@@ -280,10 +328,26 @@ async def websocket_endpoint(websocket: WebSocket):
     above_count = 0
     below_count = 0
 
+    async def flush_results():
+        """
+        Svuota la coda dei risultati verso il client.
+
+        Va chiamata anche quando NON c'e' un frame da elaborare: i messaggi in
+        coda (esito di una classificazione, risposta a uno skip) non dipendono
+        dai frame, e agganciarli al loro arrivo li bloccherebbe a tempo
+        indeterminato se la camera si ferma o non e' mai partita.
+        """
+        while not results_queue.empty():
+            await websocket.send_json(results_queue.get_nowait())
+
     try:
         while not disconnected:
             frame = latest_frame["data"]
             if frame is None:
+                try:
+                    await flush_results()
+                except (WebSocketDisconnect, RuntimeError):
+                    break
                 await asyncio.sleep(0.005)
                 continue
             latest_frame["data"] = None
@@ -375,8 +439,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     "discarded": discarded,
                 })
                 # Risultati delle classificazioni finite in background nel frattempo.
-                while not results_queue.empty():
-                    await websocket.send_json(results_queue.get_nowait())
+                await flush_results()
             except (WebSocketDisconnect, RuntimeError):
                 break
     finally:

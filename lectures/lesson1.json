@@ -2,10 +2,10 @@
   "id": "lesson1",
   "name": "Test Lesson",
   "steps": [
-    { "gloss": "HELLO", "demo_url": "/demos/hello.gif"},
-    { "gloss": "HOW1", "display_text": "HOW", "demo_url": "/demos/how.gif" },
-    { "gloss": "FINE2", "display_text": "FINE", "demo_url":"/demos/fine.gif" },
-    { "gloss": "YES", "demo_url":"/demos/yes.gif" },
-    { "gloss": "NO", "demo_url":"/demos/no.gif" }
+    { "gloss": "HELLO", "demo_url": "/demos/hello.mp4"},
+    { "gloss": "HOW1", "display_text": "HOW", "demo_url": "/demos/how.mp4" },
+    { "gloss": "FINE2", "display_text": "FINE", "demo_url":"/demos/fine.mp4" },
+    { "gloss": "YES", "demo_url":"/demos/yes.mp4" },
+    { "gloss": "NO", "demo_url":"/demos/no.mp4" }
   ]
 }

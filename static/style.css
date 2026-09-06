@@ -1,82 +1,1000 @@
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+/* ============================================================================
+   DuoSL — foglio di stile
+   ----------------------------------------------------------------------------
+   1. Token          6. Schermata lezione — barra e progresso
+   2. Base e reset   7. Schermata lezione — palco (demo + webcam)
+   3. Utility        8. Schermata lezione — feedback e diagnostica
+   4. Bottoni        9. Menu e Free Training (invariati, in attesa del loro turno)
+   5. Schermate     10. Responsive e preferenze di movimento
+   ========================================================================== */
+
+
+/* ============================ 1. TOKEN ==================================== */
+
+:root {
+  /* --- Colore: il teal e' l'identita' gia' del progetto, resta l'accento --- */
+  --brand-100: #ccfbf1;
+  --brand-200: #99f6e4;
+  --brand-300: #5eead4;
+  --brand-400: #2dd4bf;
+  --brand-500: #14b8a6;
+  --brand-600: #0d9488;
+  --brand-700: #0f766e;
+  --brand-800: #115e59;
+  --brand-900: #134e4a;
+
+  /* Neutri */
+  --n-0:   #ffffff;
+  --n-50:  #f8fafc;
+  --n-100: #f1f5f9;
+  --n-200: #e2e8f0;
+  --n-300: #cbd5e1;
+  --n-400: #94a3b8;
+  --n-500: #64748b;
+  --n-600: #475569;
+  --n-700: #334155;
+  --n-800: #1e293b;
+  --n-900: #0f172a;
+
+  /* Grafite: l'interno delle card video. Fa risaltare il video senza
+     obbligare l'intera app al tema scuro. */
+  --stage-900: #12161d;
+  --stage-800: #1a202a;
+  --stage-700: #262f3c;
+  --stage-fg:  #e6edf5;
+  --stage-fg-dim: #9fb0c4;
+
+  /* Semantici */
+  --ok-300: #86efac;
+  --ok-400: #4ade80;
+  --ok-600: #16a34a;
+  --ok-700: #15803d;
+  --ok-bg:  #ecfdf5;
+
+  --warn-300: #fcd34d;
+  --warn-400: #fbbf24;
+  --warn-600: #d97706;
+  --warn-700: #b45309;
+  --warn-800: #8a3d09;   /* fondo del banner: su -700 il testo bianco sta a 4.26, sotto AA */
+  --warn-bg:  #fffbeb;
+
+  /* Superfici */
+  --bg:        var(--n-100);
+  --surface:   var(--n-0);
+  --border:    var(--n-200);
+  --text:      var(--n-900);
+  --text-soft: var(--n-600);
+  /* slate-500 su questo sfondo dava 4.34, appena sotto AA: appena piu' scuro */
+  --text-mute: #576678;
+
+  /* --- Spazio: scala a base 4px --- */
+  --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px;
+  --s-5: 20px; --s-6: 24px; --s-7: 32px; --s-8: 40px; --s-9: 56px;
+
+  /* --- Raggi --- */
+  --r-card: 22px;
+  --r-btn:  13px;
+  --r-pill: 999px;
+
+  /* --- Ombre: due livelli (ambientale + direzionale), non una macchia sola --- */
+  --sh-1: 0 1px 2px rgba(2, 6, 23, .05),  0 1px 3px rgba(2, 6, 23, .07);
+  --sh-2: 0 2px 6px rgba(2, 6, 23, .06),  0 8px 20px rgba(2, 6, 23, .09);
+  --sh-3: 0 4px 12px rgba(2, 6, 23, .08), 0 18px 44px rgba(2, 6, 23, .14);
+
+  /* --- Tipografia --- */
+  --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --t-xs: .75rem; --t-sm: .875rem; --t-md: 1rem;
+  --t-lg: 1.25rem; --t-xl: 1.6rem; --t-2xl: 2rem; --t-3xl: 2.6rem;
+
+  /* --- Moto: fisico, mai decorativo --- */
+  --ease:      cubic-bezier(.2, .8, .2, 1);
+  --ease-back: cubic-bezier(.34, 1.4, .64, 1);
+  --dur-fast: 120ms;
+  --dur:      200ms;
+  --dur-slow: 260ms;
+
+  /* --- Dimensioni del palco --------------------------------------------
+     La webcam e' l'elemento dominante: l'utente deve sentirsi al centro
+     dell'attenzione, la demo e' il riferimento a lato. La demo sta al 74%
+     dell'altezza della camera e resta CENTRATA sulla sua altezza.
+
+     I tre limiti dentro min() sono, nell'ordine:
+       - l'altezza che resta tolti barra, prompt, banner e margini (~21rem):
+         e' quello che evita lo scroll verticale su schermi bassi, dove un
+         semplice 60vh sforava;
+       - un tetto assoluto, per non gonfiarsi su monitor molto alti;
+       - la larghezza disponibile: 4/3 (camera) + 0.74 (demo) = 2.07 volte
+         l'altezza della camera, piu' i margini. */
+  --cam-h: max(200px, min(calc(100vh - 21rem), 560px, calc((100vw - 7rem) / 2.14)));
+  --demo-h: calc(var(--cam-h) * .74);
 }
 
-/* Ogni schermata centra il proprio contenuto */
-.screen {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  width: 100%;
-}
+
+/* ========================= 2. BASE E RESET =============================== */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { height: 100%; }
 
 body {
-  background: #f1f5f9;
-  color: #0f172a;
-  min-height: 100vh;
-  position: relative;
+  margin: 0;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* background di tutta la webapp */
+/* Sfondo decorativo dell'app. La schermata lezione lo copre: durante la
+   pratica ogni pixel non funzionale ruba attenzione al video. */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
-  background-image: url("/static/bg.svg");
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  opacity: 0.9;
+  background: url("/static/bg.svg") center / cover no-repeat;
+  opacity: .9;
   z-index: -1;
   pointer-events: none;
+}
+
+h1, h2, h3, p, dl, dd, ol, ul, figure { margin: 0; }
+ol, ul { padding: 0; list-style: none; }
+
+button { font: inherit; color: inherit; }
+
+:focus-visible {
+  outline: 3px solid var(--brand-500);
+  outline-offset: 2px;
+  border-radius: var(--s-1);
+}
+
+
+/* =========================== 3. UTILITY ================================== */
+
+.hidden { display: none !important; }
+
+/* L'attributo `hidden` deve vincere sui `display` dichiarati dalle classi:
+   la regola dello user agent ha specificita' piu' bassa di un selettore di
+   classe, quindi senza questa un elemento con display:flex resta a schermo
+   anche con hidden=true. */
+[hidden] { display: none !important; }
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.icon-sprite { display: none; }
+
+.icon {
+  width: 20px; height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
+}
+
+.eyebrow {
+  font-size: var(--t-xs);
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+}
+
+
+/* =========================== 4. BOTTONI ================================== */
+
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 40px; height: 40px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--r-btn);
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease),
+              color var(--dur-fast) var(--ease),
+              transform var(--dur-fast) var(--ease);
+}
+.icon-btn:hover  { background: var(--n-200); color: var(--text); }
+.icon-btn:active { transform: scale(.94); }
+
+.icon-btn.sm { width: 32px; height: 32px; }
+.icon-btn.sm .icon { width: 17px; height: 17px; }
+
+/* Interruttori: lo stato acceso si vede da colore E riempimento, non dal solo colore */
+.icon-btn[aria-pressed="true"] {
+  background: var(--brand-700);
+  border-color: var(--brand-800);
+  color: var(--n-0);
+}
+
+/* Pulsanti con etichetta: le sole icone non dicevano ne' cosa fanno ne' se
+   sono accese. Lo stato acceso cambia icona, testo E riempimento insieme. */
+.chip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--text-soft);
+  font-size: var(--t-sm);
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--dur-fast) var(--ease),
+              color var(--dur-fast) var(--ease),
+              border-color var(--dur-fast) var(--ease),
+              transform var(--dur-fast) var(--ease);
+}
+.chip-btn:hover  { border-color: var(--n-300); color: var(--text); }
+.chip-btn:active { transform: scale(.97); }
+.chip-btn .icon  { width: 17px; height: 17px; }
+
+.chip-btn[aria-pressed="true"] {
+  background: var(--brand-700);
+  border-color: var(--brand-700);
+  color: var(--n-0);
+}
+
+/* Il pannello diagnostica e' uno strumento, non una funzione della lezione:
+   resta piu' defilato del comando voce. */
+.chip-btn.quiet { color: var(--text-mute); background: transparent; border-color: transparent; }
+.chip-btn.quiet:hover { background: var(--n-200); color: var(--text-soft); }
+.chip-btn.quiet[aria-pressed="true"] { background: var(--n-800); border-color: var(--n-800); color: var(--n-0); }
+
+.chip-btn:disabled { opacity: .45; cursor: default; }
+
+/* Il toggle voce scambia le due icone in base allo stato */
+#voice-toggle .icon-off { display: block; }
+#voice-toggle .icon-on  { display: none; }
+#voice-toggle[aria-pressed="true"] .icon-off { display: none; }
+#voice-toggle[aria-pressed="true"] .icon-on  { display: block; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 10px var(--s-5);
+  border: none;
+  border-radius: var(--r-btn);
+  background: var(--brand-700);
+  color: var(--n-0);
+  font-size: var(--t-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease),
+              transform var(--dur-fast) var(--ease);
+}
+.btn:hover  { background: var(--brand-800); }
+.btn:active { transform: scale(.97); }
+
+/* Velo SCURO, non chiaro: questi pulsanti stanno su fondi gia' colorati (il
+   banner ambra) e schiarirli abbassava il contrasto del testo sotto AA. */
+.btn.subtle {
+  background: rgba(0, 0, 0, .24);
+  color: var(--n-0);
+  border: 1px solid rgba(255, 255, 255, .28);
+}
+.btn.subtle:hover { background: rgba(0, 0, 0, .34); }
+
+/* Pillole sopra al video: sfondo sfocato per restare leggibili su qualsiasi
+   immagine sottostante. */
+.pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 38px; height: 34px;
+  padding: 0 var(--s-3);
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: var(--r-pill);
+  background: rgba(10, 14, 20, .58);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: var(--stage-fg);
+  font-size: var(--t-xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease),
+              transform var(--dur-fast) var(--ease);
+}
+.pill-btn:hover  { background: rgba(10, 14, 20, .78); }
+.pill-btn:active { transform: scale(.94); }
+.pill-btn[aria-pressed="true"] {
+  background: var(--brand-600);
+  border-color: var(--brand-400);
+  color: var(--n-0);
+}
+.pill-btn:disabled { opacity: .4; cursor: default; }
+
+/* Play/pausa: il pulsante mostra l'azione disponibile, non lo stato corrente.
+   aria-pressed="true" = video in pausa, quindi si offre "play". */
+#demo-play .icon-play  { display: none; }
+#demo-play[aria-pressed="true"] .icon-pause { display: none; }
+#demo-play[aria-pressed="true"] .icon-play  { display: block; }
+/* In pausa non e' un interruttore acceso: niente riempimento di accento */
+#demo-play[aria-pressed="true"] {
+  background: rgba(10, 14, 20, .58);
+  border-color: rgba(255, 255, 255, .16);
+  color: var(--stage-fg);
+}
+
+
+/* ========================== 5. SCHERMATE ================================= */
+
+.screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  width: 100%;
 }
 
 .app-container {
   width: 100%;
   max-width: 900px;
-  padding: 24px;
+  padding: var(--s-6);
 }
 
-.hidden {
-  display: none !important;
+
+/* ================ 6. LEZIONE — BARRA E PROGRESSO ========================= */
+
+.lesson-screen {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: var(--s-4);
+  min-height: 100vh;
+  padding: var(--s-5) var(--s-7) var(--s-7);
+  position: relative;
+  /* Lascia trasparire le onde di body::before, ma le sbianca sotto il
+     contenuto: fanno atmosfera in fondo alla pagina senza competere con il
+     video, che e' dove l'occhio deve stare. */
+  background: linear-gradient(180deg,
+              var(--bg) 0%,
+              var(--bg) 42%,
+              rgba(241, 245, 249, .82) 70%,
+              rgba(241, 245, 249, .55) 100%);
 }
 
-/* Header */
-header {
-  text-align: center;
-  margin-bottom: 24px;
+.lesson-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--s-5);
+  flex: none;
 }
 
-header h1 {
-  font-size: 2rem;
-  margin-bottom: 8px;
-  color: #0f172a;
+.progress-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  min-width: 0;
 }
 
-.badge {
-  font-size: 0.9rem;
+/* Stepper: pallini uniti da una linea. Rispetto a una barra piena dice tre
+   cose invece di una — quanti step ci sono, quali sono andati, e su quale
+   sei adesso — e il pallino corrente e' riconoscibile a colpo d'occhio. */
+.stepper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.stepper li {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+/* La linea di collegamento parte da ogni pallino tranne il primo */
+.stepper li + li::before {
+  content: "";
+  position: absolute;
+  right: 50%;
+  left: -50%;
+  height: 3px;
+  border-radius: var(--r-pill);
+  background: var(--n-300);
+  transition: background var(--dur) var(--ease);
+}
+.stepper li[data-state="done"]::before,
+.stepper li[data-state="skipped"]::before,
+.stepper li[data-state="current"]::before { background: var(--brand-500); }
+
+.step-dot {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--n-0);
+  border: 3px solid var(--n-300);
+  color: var(--n-0);
+  font-size: 10px;
+  font-weight: 800;
+  transition: background var(--dur) var(--ease),
+              border-color var(--dur) var(--ease),
+              width var(--dur) var(--ease),
+              height var(--dur) var(--ease);
+}
+.step-dot .icon { width: 11px; height: 11px; stroke-width: 3.5; display: none; }
+
+.stepper li[data-state="done"] .step-dot {
+  background: var(--brand-600);
+  border-color: var(--brand-600);
+}
+.stepper li[data-state="done"] .step-dot .icon { display: block; }
+
+.stepper li[data-state="skipped"] .step-dot {
+  background: var(--n-0);
+  border-color: var(--n-400);
+}
+
+/* Lo step corrente e' piu' grande e ha un alone: e' il "sei qui" */
+.stepper li[data-state="current"] .step-dot {
+  width: 26px; height: 26px;
+  background: var(--brand-500);
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 5px rgba(20, 184, 166, .18);
+}
+.stepper li[data-state="current"] .step-dot::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 2px solid var(--brand-400);
+  animation: step-ping 2s var(--ease) infinite;
+}
+@keyframes step-ping {
+  0%   { transform: scale(1);   opacity: .7; }
+  70%  { transform: scale(1.5); opacity: 0; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+/* Etichetta del segno sotto il pallino corrente: conferma su quale sei */
+.step-name {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 10px;
   font-weight: 700;
-  color: #052e1f;
-  background: #6ee7b7;
-  padding: 2px 10px;
-  border-radius: 999px;
-  vertical-align: middle;
-  margin-left: 8px;
+  letter-spacing: .04em;
+  color: var(--text-mute);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity var(--dur) var(--ease);
+}
+.stepper li[data-state="current"] .step-name { opacity: 1; color: var(--brand-700); }
+
+.progress-count {
+  flex: none;
+  font-size: var(--t-sm);
+  font-weight: 700;
+  color: var(--text-mute);
+  font-variant-numeric: tabular-nums;
 }
 
-header p {
-  color: #334155;
+.bar-actions { display: flex; gap: var(--s-1); flex: none; }
+
+
+/* ==================== 7. LEZIONE — IL PALCO ============================== */
+
+/* --- Il segno da fare -------------------------------------------------
+   Centrato, grande, sopra entrambe le card. Nella prima versione stava di
+   lato sopra la demo e non veniva trovato: era l'informazione piu'
+   importante della schermata trattata come una didascalia. */
+.prompt {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+  text-align: center;
 }
 
-/* ===== Menu screen: layout a TRE colonne ===== */
-/* Sinistra: info panel | Centro: titolo + bottoni | Destra: logo */
+.prompt-eyebrow {
+  font-size: var(--t-sm);
+  font-weight: 700;
+  letter-spacing: .02em;
+  color: var(--text-mute);
+}
 
-/* Il menu ha bisogno di più respiro orizzontale rispetto alle altre schermate.
-   Si adatta alla larghezza dello schermo invece di essere fissa. */
+/* Il segno vive dentro un badge colorato, non come testo nero su fondo
+   chiaro: cosi' non si legge come "una scritta" ma come il compito da
+   svolgere, ed e' quello che l'occhio aggancia per primo entrando. */
+.prompt-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-2) var(--s-3) var(--s-2) var(--s-7);
+  border-radius: var(--r-pill);
+  /* Non piu' chiaro di brand-700: sopra, il bianco scende sotto 4.5:1 e
+     resterebbe leggibile solo grazie al corpo grande. */
+  background: linear-gradient(135deg, var(--brand-700), var(--brand-900));
+  box-shadow: 0 2px 8px rgba(15, 118, 110, .22),
+              0 12px 30px rgba(15, 118, 110, .26);
+}
+
+.sign-word {
+  font-size: clamp(2.2rem, 4.4vw, 3.4rem);
+  font-weight: 800;
+  letter-spacing: .01em;
+  line-height: 1.1;
+  color: var(--n-0);
+  white-space: nowrap;   /* i gloss sono parole singole: mai due righe */
+}
+
+/* L'altoparlante sta dentro il badge: tondo, su velo chiaro */
+#speak-word {
+  flex: none;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .16);
+  color: var(--n-0);
+}
+#speak-word:hover { background: rgba(255, 255, 255, .3); }
+#speak-word .icon { width: 22px; height: 22px; }
+
+/* Al cambio step entra con un movimento breve: serve ad accorgersi che lo
+   step e' cambiato, non a restare vistoso. */
+.sign-word.is-new { animation: word-in 380ms var(--ease-back); }
+@keyframes word-in {
+  from { opacity: 0; transform: translateY(12px) scale(.94); }
+  to   { opacity: 1; transform: none; }
+}
+
+.lesson-stage {
+  flex: 1;
+  display: flex;
+  align-items: center;      /* la demo sta a meta' altezza della webcam */
+  justify-content: center;
+  gap: var(--s-6);
+}
+
+.stage-col { display: flex; flex-direction: column; }
+
+.card {
+  position: relative;
+  border-radius: var(--r-card);
+  overflow: hidden;
+  background: var(--stage-900);
+  box-shadow: var(--sh-3);
+  flex: none;
+}
+
+/* Altezza guidata, larghezza derivata dall'aspect-ratio */
+.demo-card { height: var(--demo-h); aspect-ratio: 1 / 1; }
+.cam-card  { height: var(--cam-h);  aspect-ratio: 4 / 3; }
+
+/* Etichetta della card: dice cosa stai guardando senza rubare spazio */
+.card-tag {
+  position: absolute;
+  top: var(--s-3); left: var(--s-3);
+  z-index: 2;
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  background: rgba(10, 14, 20, .55);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: var(--stage-fg);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+/* Sulla webcam l'angolo in alto a sinistra e' gia' del badge di stato */
+.card-tag.right { left: auto; right: var(--s-3); }
+
+/* --- Pannello demo --- */
+
+/* `contain` e non `cover`: su un segno un ritaglio automatico puo' mangiarsi
+   una mano. Le proporzioni disomogenee dei video le assorbe il pannello. */
+#demo-video {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  display: block;
+  background: var(--stage-900);
+  transition: transform var(--dur) var(--ease);
+}
+#demo-video.mirrored { transform: scaleX(-1); }
+
+.demo-missing {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--stage-fg-dim);
+  font-size: var(--t-sm);
+}
+
+/* La card demo e' piccola: i controlli si stringono per non occuparne il fondo */
+.demo-controls {
+  position: absolute;
+  left: 0; right: 0; bottom: var(--s-2);
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  opacity: .5;
+  transition: opacity var(--dur) var(--ease);
+}
+.demo-controls .pill-btn {
+  min-width: 32px; height: 29px;
+  padding: 0 var(--s-2);
+  font-size: 11px;
+}
+.demo-controls .icon { width: 15px; height: 15px; }
+/* Sempre raggiungibili da tastiera, non solo all'hover */
+.demo-card:hover .demo-controls,
+.demo-controls:focus-within { opacity: 1; }
+
+/* --- Card webcam --- */
+
+#webcam, #overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);   /* specchio solo visivo: i landmark al modello non sono ribaltati */
+}
+
+/* Il canvas non ha fondo opaco: finche' non arriva il primo frame annotato
+   si vede il video grezzo sotto, cosi' la camera da' riscontro immediato. */
+#overlay { background: transparent; }
+
+/* --- L'anello di stato -----------------------------------------------
+   Un solo canale, sul bordo del video, dove l'occhio gia' sta. Colore,
+   spessore e movimento: quello che la visione periferica sa rilevare.
+   Il testo, che in periferia non si legge, resta un complemento. */
+.cam-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-card);
+  border: 2px solid var(--ring, rgba(255, 255, 255, .12));
+  pointer-events: none;
+  transition: border-color var(--dur-fast) var(--ease),
+              border-width var(--dur-fast) var(--ease),
+              box-shadow var(--dur) var(--ease);
+}
+
+/* Niente alone diffuso attorno alla card: il bordo pieno basta a comunicare
+   lo stato, e l'alone risultava agitante proprio nel momento del giudizio. */
+.cam-card[data-state="capturing"] .cam-ring {
+  --ring: var(--brand-400);
+  border-width: 3px;
+  animation: ring-breathe 2s ease-in-out infinite;
+}
+.cam-card[data-state="correct"] .cam-ring {
+  --ring: var(--ok-400);
+  border-width: 5px;
+}
+.cam-card[data-state="wrong"] .cam-ring {
+  --ring: var(--warn-400);
+  border-width: 5px;
+}
+.cam-card[data-state="discarded"] .cam-ring {
+  --ring: var(--n-400);
+  border-width: 3px;
+}
+.cam-card[data-state="disconnected"] .cam-ring,
+.cam-card[data-state="denied"] .cam-ring,
+.cam-card[data-state="nocam"] .cam-ring {
+  --ring: var(--n-500);
+  border-style: dashed;
+}
+
+/* Solo il bordo respira, senza alone: segnala "sto registrando" con
+   discrezione, restando percepibile in visione periferica. */
+@keyframes ring-breathe {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .45; }
+}
+
+/* Nessuno scuotimento sull'errore: un tentativo non riconosciuto non e' un
+   fallimento, e far tremare l'immagine dell'utente genera ansia proprio
+   mentre sta cercando di rifare il segno. Il verdetto lo danno colore,
+   glifo e testo, che bastano. */
+
+.cam-badge {
+  position: absolute;
+  top: var(--s-3); left: var(--s-3);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 6px var(--s-3);
+  border-radius: var(--r-pill);
+  background: rgba(10, 14, 20, .6);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: var(--stage-fg);
+  font-size: var(--t-xs);
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+
+.badge-dot {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: var(--n-400);
+  transition: background var(--dur-fast) var(--ease);
+}
+.cam-card[data-state="capturing"] .badge-dot { background: var(--brand-400); }
+.cam-card[data-state="correct"]   .badge-dot { background: var(--ok-400); }
+.cam-card[data-state="wrong"]     .badge-dot { background: var(--warn-400); }
+
+/* Glifo del verdetto: il colore non viaggia mai da solo */
+.cam-verdict {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  pointer-events: none;
+}
+.cam-verdict .icon {
+  width: 76px; height: 76px;
+  stroke-width: 2.4;
+  padding: var(--s-4);
+  border-radius: 50%;
+  background: rgba(10, 14, 20, .55);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  display: none;
+}
+.cam-card[data-state="correct"] .cam-verdict,
+.cam-card[data-state="wrong"]   .cam-verdict { animation: verdict-pop 900ms var(--ease) forwards; }
+.cam-card[data-state="correct"] .v-ok { display: block; color: var(--ok-300); }
+.cam-card[data-state="wrong"]   .v-no { display: block; color: var(--warn-300); }
+
+@keyframes verdict-pop {
+  0%   { opacity: 0; transform: scale(.82); }
+  22%  { opacity: 1; transform: scale(1.04); }
+  62%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+/* Suggerimento gentile, non un errore */
+.cam-hint {
+  position: absolute;
+  left: 50%; bottom: var(--s-4);
+  transform: translateX(-50%);
+  display: flex; align-items: center; gap: var(--s-2);
+  padding: 8px var(--s-4);
+  border-radius: var(--r-pill);
+  background: rgba(10, 14, 20, .68);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: var(--stage-fg);
+  font-size: var(--t-sm);
+  white-space: nowrap;
+  animation: hint-in var(--dur) var(--ease);
+}
+@keyframes hint-in { from { opacity: 0; transform: translate(-50%, 8px); } }
+
+/* Stati che coprono la card: permessi, errori, fine lezione */
+.cam-cover {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-3);
+  padding: var(--s-7);
+  text-align: center;
+  background: rgba(10, 14, 20, .93);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: var(--stage-fg);
+  animation: cover-in var(--dur-slow) var(--ease);
+}
+@keyframes cover-in { from { opacity: 0; } }
+
+.cover-icon { width: 40px; height: 40px; color: var(--stage-fg-dim); }
+.cover-title { font-size: var(--t-lg); font-weight: 700; }
+.cover-text  { font-size: var(--t-sm); color: var(--stage-fg-dim); max-width: 34ch; line-height: 1.5; }
+.cover-actions { display: flex; gap: var(--s-2); margin-top: var(--s-2); flex-wrap: wrap; justify-content: center; }
+/* :not(.subtle) e' necessario: a pari specificita' questa regola vincerebbe su
+   .btn.subtle solo perche' viene dopo, appiattendo azione primaria e
+   secondaria sullo stesso aspetto. */
+.cam-cover .btn:not(.subtle) { background: var(--brand-600); }
+.cam-cover .btn:not(.subtle):hover { background: var(--brand-500); }
+
+.cam-cover[data-tone="ok"] .cover-icon { color: var(--ok-400); }
+
+/* Elenco dei segni praticati, nel riepilogo di fine lezione */
+.cover-signs {
+  display: flex; flex-wrap: wrap; gap: var(--s-2);
+  justify-content: center;
+  margin-top: var(--s-1);
+}
+.cover-signs li {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px var(--s-3);
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, .10);
+  font-size: var(--t-xs);
+  font-weight: 700;
+}
+.cover-signs li[data-ok="true"]  { color: var(--ok-300); }
+.cover-signs li[data-ok="false"] { color: var(--stage-fg-dim); }
+
+
+/* ============ 8. LEZIONE — FEEDBACK E DIAGNOSTICA ======================== */
+
+/* Lo spazio del verdetto resta riservato anche quando il verdetto non c'e':
+   un banner che compare accorciando il palco farebbe saltare le card verso
+   l'alto nell'istante peggiore, cioe' mentre l'utente le sta guardando. */
+.feedback-slot {
+  flex: none;
+  min-height: 78px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.feedback {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  width: min(720px, 100%);
+  padding: var(--s-4) var(--s-5);
+  border-radius: var(--r-card);
+  background: var(--stage-800);
+  color: var(--stage-fg);
+  box-shadow: var(--sh-2);
+  overflow: hidden;
+  animation: fb-in var(--dur-slow) var(--ease);
+}
+@keyframes fb-in { from { opacity: 0; transform: translateY(14px); } }
+
+.feedback[data-kind="correct"] { background: var(--ok-700); }
+.feedback[data-kind="wrong"]   { background: var(--warn-800); }
+.feedback[data-kind="neutral"] { background: var(--stage-800); }
+
+.fb-glyph { display: grid; place-items: center; flex: none; }
+.fb-glyph .icon { width: 26px; height: 26px; display: none; }
+.feedback[data-kind="correct"] .fb-ok { display: block; }
+.feedback[data-kind="wrong"]   .fb-no { display: block; }
+
+.fb-text { flex: 1; font-size: var(--t-md); font-weight: 600; }
+.fb-actions { display: flex; gap: var(--s-2); flex: none; }
+
+/* L'auto-avanzamento si vede scorrere: non "succede e basta" */
+.fb-timer {
+  position: absolute;
+  left: 0; bottom: 0;
+  height: 3px;
+  width: 100%;
+  transform-origin: left;
+  background: rgba(255, 255, 255, .55);
+}
+.fb-timer.run { animation: fb-timer linear forwards; }
+@keyframes fb-timer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+/* --- Diagnostica: fuori dalla vista di chi impara, a portata di chi tara --- */
+/* Sollevato sopra lo spazio riservato al verdetto: il pannello puo' velare un
+   angolo del video (e' uno strumento, si apre di proposito) ma non deve mai
+   coprire il testo del verdetto ne' il pulsante di skip. */
+.debug-panel {
+  position: fixed;
+  right: var(--s-5);
+  bottom: calc(var(--s-7) + 78px + var(--s-2));
+  z-index: 20;
+  width: 310px;
+  padding: var(--s-5);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  box-shadow: var(--sh-3);
+  font-size: var(--t-sm);
+  animation: dbg-in var(--dur) var(--ease);
+}
+@keyframes dbg-in { from { opacity: 0; transform: translateY(10px); } }
+
+.debug-panel h3 {
+  font-size: var(--t-xs);
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+  margin-bottom: var(--s-4);
+}
+
+.meter { display: flex; align-items: center; gap: var(--s-3); margin-bottom: var(--s-4); }
+
+/* Le due soglie disegnate sopra la barra: tararle diventa visivo invece
+   che a occhio, che e' il punto della sezione 6 di COME_TESTARE.txt. */
+.meter-track {
+  position: relative;
+  flex: 1;
+  height: 30px;
+  border-radius: var(--s-2);
+  background: var(--n-100);
+  overflow: hidden;
+}
+.meter-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  background: linear-gradient(90deg, var(--brand-500), var(--brand-300));
+  transition: width 90ms linear;
+}
+.meter-mark { position: absolute; top: 0; bottom: 0; pointer-events: none; }
+.meter-mark i {
+  position: absolute; top: 0; bottom: 0; left: 0;
+  width: 2px;
+  background: var(--n-700);
+}
+/* Chip opaco dietro l'etichetta: la barra di riempimento le scorre sotto,
+   e senza fondo il valore diventa illeggibile appena il movimento sale. */
+.meter-mark b {
+  position: absolute; top: 3px; left: 3px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--n-0);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  color: var(--n-700);
+  white-space: nowrap;
+}
+.mark-exit i { background: var(--n-400); }
+
+.meter-value {
+  flex: none;
+  min-width: 46px;
+  text-align: right;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.dbg-rows { display: grid; gap: 5px; }
+.dbg-rows > div { display: flex; justify-content: space-between; gap: var(--s-3); }
+.dbg-rows dt { color: var(--text-mute); }
+.dbg-rows dd { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+
+.dbg-note {
+  margin-top: var(--s-4);
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--border);
+  font-size: var(--t-xs);
+  color: var(--text-mute);
+  line-height: 1.5;
+}
+.dbg-note code {
+  font-size: .95em;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--n-100);
+}
+
+
+/* ========== 9. MENU E FREE TRAINING (in attesa del loro turno) =========== */
+
 .menu-page .app-container {
   max-width: min(1400px, 92vw);
   min-height: 100vh;
@@ -84,16 +1002,12 @@ header p {
   flex-direction: column;
 }
 
-/* Titolo principale, fissato in alto */
 .menu-page .menu-page-title {
   text-align: center;
-  font-size: 2.6rem;
-  color: #0f172a;
+  font-size: var(--t-3xl);
   margin-top: 5vh;
-  margin-bottom: 0;
 }
 
-/* Le tre colonne occupano lo spazio restante e restano centrate al suo interno */
 .menu-page .menu-layout {
   flex: 1;
   display: flex;
@@ -104,29 +1018,17 @@ header p {
   width: 100%;
 }
 
-/* Colonna sinistra: pannello informativo, dentro un riquadro con lieve colore di sfondo */
 .menu-page .info-side {
   flex: 1 1 220px;
   background: #f0fdfa;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 4px 12px rgba(2, 6, 23, 0.06);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  padding: var(--s-6);
+  box-shadow: var(--sh-1);
 }
+.menu-page .info-title { font-size: 1.4rem; margin-bottom: 10px; }
+.menu-page .info-text { color: var(--n-700); line-height: 1.5; font-size: .95rem; }
 
-.menu-page .info-title {
-  font-size: 1.4rem;
-  margin-bottom: 10px;
-  color: #0f172a;
-}
-
-.menu-page .info-text {
-  color: #334155;
-  line-height: 1.5;
-  font-size: 0.95rem;
-}
-
-/* Colonna centrale: titolo + sottotitolo + bottoni */
 .menu-page .center-side {
   flex: 1 1 280px;
   text-align: center;
@@ -134,171 +1036,187 @@ header p {
   flex-direction: column;
   align-items: center;
 }
-
-.menu-page .menu-subtitle {
-  color: #334155;
-  margin-bottom: 24px;
-}
+.menu-page .menu-subtitle { color: var(--n-700); margin-bottom: var(--s-6); }
 
 .menu-page .menu-buttons {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--s-4);
   width: 100%;
   max-width: 320px;
 }
-
 .menu-page .menu-buttons button {
-  padding: 14px 20px;
+  padding: 14px var(--s-5);
   border: none;
-  border-radius: 12px;
-  background: #0f766e;
+  border-radius: var(--r-btn);
+  background: var(--brand-700);
   color: #f0fdfa;
   font-weight: 700;
   font-size: 1.05rem;
   cursor: pointer;
-  transition: background 0.2s, transform 0.05s;
+  transition: background var(--dur) var(--ease), transform 50ms var(--ease);
+}
+.menu-page .menu-buttons button:hover  { background: var(--brand-800); }
+.menu-page .menu-buttons button:active { transform: scale(.98); }
+
+.menu-page .logo-side { flex: 1 1 220px; display: flex; justify-content: center; align-items: center; }
+.menu-page .logo-img { max-width: 100%; height: auto; max-height: 220px; }
+
+/* Free Training: schermata di prova, invariata */
+#app-screen header { text-align: center; margin-bottom: var(--s-6); }
+#app-screen header h1 { font-size: var(--t-2xl); margin-bottom: var(--s-2); }
+#app-screen header p { color: var(--n-700); }
+
+#app-screen .badge {
+  font-size: .9rem;
+  font-weight: 700;
+  color: #052e1f;
+  background: #6ee7b7;
+  padding: 2px 10px;
+  border-radius: var(--r-pill);
+  vertical-align: middle;
+  margin-left: var(--s-2);
 }
 
-.menu-page .menu-buttons button:hover {
-  background: #0b5e56;
-}
-
-.menu-page .menu-buttons button:active {
-  transform: scale(0.98);
-}
-
-/* Colonna destra: logo */
-.menu-page .logo-side {
-  flex: 1 1 220px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.menu-page .logo-img {
-  max-width: 100%;
-  height: auto;
-  max-height: 220px;
-}
-
-@media (max-width: 800px) {
-  .menu-page .menu-layout {
-    flex-direction: column;
-  }
-
-  .menu-page .center-side {
-    order: -1; /* il titolo/bottoni resta in cima su mobile */
-  }
-}
-
-/* Main content */
-.main-content {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
+.main-content { display: flex; flex-direction: column; gap: var(--s-5); }
 
 .camera-wrapper {
   position: relative;
   width: 100%;
   max-width: 640px;
   margin: 0 auto;
-  border-radius: 16px;
+  border-radius: var(--r-card);
   overflow: hidden;
-  border: 4px solid #334155;
-  box-shadow: 0 10px 30px rgba(2, 6, 23, 0.25);
-  background: #111827;
+  border: 4px solid var(--n-700);
+  box-shadow: var(--sh-3);
+  background: var(--stage-900);
   aspect-ratio: 4 / 3;
 }
 
-#webcam {
-  display: block;
-  width: 100%;
-  height: 100%;
+#free-webcam, #free-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
   object-fit: cover;
   transform: scaleX(-1);
 }
 
-#overlay {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  transform: scaleX(-1);
-  background: #111827;
-}
-
 .capture-indicator {
   position: absolute;
-  top: 12px;
-  left: 12px;
+  top: var(--s-3); left: var(--s-3);
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: rgba(2, 6, 23, 0.85);
-  font-size: 0.85rem;
+  gap: var(--s-2);
+  padding: 6px var(--s-3);
+  border-radius: var(--r-pill);
+  background: rgba(2, 6, 23, .85);
+  font-size: .85rem;
   font-weight: 700;
-  color: #e2e8f0;
+  color: var(--n-200);
 }
-
 #capture-dot {
-  width: 12px;
-  height: 12px;
+  width: 12px; height: 12px;
   border-radius: 50%;
   background: #ef4444;
-  transition: background 0.15s;
+  transition: background var(--dur-fast) var(--ease);
 }
+#capture-dot.active { background: var(--ok-600); }
 
-#capture-dot.active {
-  background: #22c55e;
-}
-
-/* Info panel */
 .info-panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--s-3);
   max-width: 640px;
   margin: 0 auto;
   width: 100%;
 }
-
-.info-panel label {
-  font-size: 0.9rem;
-  color: #1e293b;
-  font-weight: 600;
-}
+.info-panel label { font-size: .9rem; color: var(--n-800); font-weight: 600; }
 
 #message {
   width: 100%;
-  padding: 12px 14px;
+  padding: var(--s-3) 14px;
   border-radius: 10px;
-  border: 2px solid #334155;
-  background: #111827;
-  color: #e5e7eb;
-  font-size: 1rem;
+  border: 2px solid var(--n-700);
+  background: var(--stage-900);
+  color: var(--stage-fg);
+  font-size: var(--t-md);
   outline: none;
 }
+#message:focus { border-color: var(--brand-700); }
 
-#message:focus {
-  border-color: #0f766e;
-}
-
-#start-btn,
-#back-btn {
-  padding: 10px 16px;
+#start-btn, #back-btn {
+  padding: 10px var(--s-4);
   border: none;
   border-radius: 10px;
-  background: #0f766e;
+  background: var(--brand-700);
   color: #f0fdfa;
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background var(--dur) var(--ease);
+}
+#start-btn:hover, #back-btn:hover { background: var(--brand-800); }
+
+
+/* ============ 10. RESPONSIVE E PREFERENZE DI MOVIMENTO =================== */
+
+/* Sotto questa soglia le due card affiancate diventano troppo piccole per
+   distinguere una configurazione della mano: si impilano. */
+@media (max-width: 900px) {
+  .lesson-screen { padding: var(--s-4) var(--s-4) var(--s-6); }
+
+  .lesson-stage {
+    flex-direction: column;
+    align-items: center;
+    gap: var(--s-4);
+  }
+
+  .stage-col { width: 100%; max-width: 560px; }
+
+  .sign-word { font-size: clamp(2rem, 9vw, 2.6rem); }
+  .feedback-slot { min-height: 0; }
+
+  /* Impilate, la webcam va sopra: resta lei l'elemento principale */
+  .you-col  { order: 1; }
+  .demo-col { order: 2; }
+
+  .cam-card { height: auto; width: 100%; }
+  .demo-card {
+    height: auto;
+    width: min(260px, 62vw);
+    margin-inline: auto;
+  }
+
+  .step-name { display: none; }   /* nella barra stretta non ci sta */
 }
 
-#start-btn:hover,
-#back-btn:hover {
-  background: #0b5e56;
+@media (max-width: 800px) {
+  .menu-page .menu-layout { flex-direction: column; }
+  .menu-page .center-side { order: -1; }
+}
+
+@media (max-width: 560px) {
+  /* Su schermo stretto il verdetto sta subito sotto le card: il pannello si
+     sposta in alto, altrimenti gli finisce sopra. */
+  .debug-panel {
+    right: var(--s-3); left: var(--s-3);
+    top: 64px; bottom: auto;
+    width: auto;
+  }
+  .feedback { flex-wrap: wrap; }
+  .fb-text { flex: 1 1 100%; order: -1; }
+}
+
+/* Restano colore e glifo, che sono l'informazione; sparisce il movimento. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+  .cam-card[data-state="capturing"] .cam-ring { animation: none; }
+  .cam-card.shake { animation: none; }
+  .cam-verdict { opacity: 1; }
+  .cam-card[data-state="correct"] .cam-verdict,
+  .cam-card[data-state="wrong"] .cam-verdict { animation: none; opacity: 1; }
+  .fb-timer.run { animation: none; transform: scaleX(0); }
 }

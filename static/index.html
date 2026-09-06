@@ -1,25 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
-  
+
 <head>
   <meta charset="UTF-8" />
-  <title>DuoSL Demo (capture mode)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DuoSL – Sign Language Practice</title>
   <link rel="stylesheet" href="/static/style.css" />
   <link rel="icon" href="/static/favicon.ico" />
 </head>
 
-
 <body>
 
-  <!-- MENU INIZIALE -->
+  <!-- Sprite di icone: definite una volta, richiamate con <use href="#i-nome">.
+       SVG inline invece di emoji: rendering identico su ogni piattaforma e
+       colore ereditato da currentColor. -->
+  <svg class="icon-sprite" aria-hidden="true" focusable="false">
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-volume-on" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></symbol>
+    <symbol id="i-volume-off" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="m23 9-6 6M17 9l6 6"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 3.5 20 12 6 20.5z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M6.5 4.5h3.5v15H6.5zM14 4.5h3.5v15H14z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-mirror" viewBox="0 0 24 24"><path d="M12 2v20"/><path d="M8.5 7 4 12l4.5 5M15.5 7l4.5 5-4.5 5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-retry" viewBox="0 0 24 24"><path d="M1 4v6h6"/><path d="M3.5 15a9 9 0 1 0 2.1-9.4L1 10"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4.5M12 17.2h.01"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></symbol>
+    <symbol id="i-hand" viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v7M10 10.5V6a2 2 0 0 0-4 0v9"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2a8 8 0 0 1-8-8v-1a2 2 0 1 1 4 0"/></symbol>
+    <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M13 5l7 7-7 7"/></symbol>
+  </svg>
+
+
+  <!-- ===================== MENU INIZIALE ===================== -->
+  <!-- Fuori ambito in questo passaggio: markup invariato. -->
   <div id="menu-screen" class="screen menu-page">
     <div class="app-container">
 
-      <!-- Titolo -->
       <h1 class="menu-page-title">DuoSL – Sign Language Practice </h1>
 
       <div class="menu-layout">
-        <!-- Colonna sinistra: pannello informativo -->
         <div class="info-side">
           <h2 class="info-title">What's DuoSL</h2>
           <p class="info-text">
@@ -34,7 +53,6 @@
           </p>
         </div>
 
-        <!-- Colonna centrale: sottotitolo + bottoni -->
         <div class="center-side">
           <p class="menu-subtitle">Choose your mode to start practicing sign language</p>
           <div class="menu-buttons">
@@ -43,16 +61,18 @@
           </div>
         </div>
 
-        <!-- Colonna destra: logo -->
         <div class="logo-side">
-          <img src="/static/sign-language.png" alt="DuoSL sign logo" class="logo-img" />
+          <!-- lazy: entrando direttamente in una lezione il menu resta nascosto,
+               e senza questo il logo verrebbe scaricato comunque -->
+          <img src="/static/sign-language.png" alt="DuoSL sign logo" class="logo-img" loading="lazy" />
         </div>
 
       </div>
     </div>
   </div>
 
-  <!-- SCHERMATA SCELTA LEZIONE -->
+  <!-- ===================== SCELTA LEZIONE ===================== -->
+  <!-- Fuori ambito in questo passaggio: markup invariato. -->
   <div id="lectures-screen" class="screen menu-page hidden">
     <div class="app-container">
       <h1 class="menu-page-title">Choose a Lecture</h1>
@@ -69,18 +89,177 @@
     </div>
   </div>
 
-  <!-- UI PRINCIPALE -->
+
+  <!-- ===================== SCHERMATA LEZIONE ===================== -->
+  <div id="lesson-screen" class="screen lesson-screen hidden">
+
+    <!-- Barra superiore: uscita, progresso, interruttori globali -->
+    <header class="lesson-bar">
+      <button id="lesson-exit" class="icon-btn" type="button" title="Exit lesson (Esc)">
+        <svg class="icon"><use href="#i-close"></use></svg>
+        <span class="sr-only">Exit lesson</span>
+      </button>
+
+      <!-- Stepper: dove sono adesso e quanto manca, a colpo d'occhio -->
+      <div class="progress-wrap">
+        <ol class="stepper" id="lesson-progress" aria-label="Lesson progress"></ol>
+        <span class="progress-count" id="lesson-count" aria-live="polite"></span>
+      </div>
+
+      <!-- Etichettati, non solo icone: da soli i simboli non dicevano ne'
+           che cosa fanno ne' se sono accesi. -->
+      <div class="bar-actions">
+        <button id="voice-toggle" class="chip-btn" type="button" aria-pressed="false"
+                title="Read the sign aloud (V)">
+          <svg class="icon icon-on"><use href="#i-volume-on"></use></svg>
+          <svg class="icon icon-off"><use href="#i-volume-off"></use></svg>
+          <span class="chip-label" id="voice-label">Voice off</span>
+        </button>
+        <button id="debug-toggle" class="chip-btn quiet" type="button" aria-pressed="false"
+                title="Capture diagnostics — for tuning the movement thresholds (D)">
+          <svg class="icon"><use href="#i-sliders"></use></svg>
+          <span class="chip-label">Debug</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Il segno da fare. Centrato e grande perche' e' l'informazione piu'
+         importante della schermata: prima stava di lato e non si trovava. -->
+    <div class="prompt">
+      <p class="prompt-eyebrow">Your turn — make this sign</p>
+      <div class="prompt-row">
+        <h2 class="sign-word" id="sign-word">&nbsp;</h2>
+        <button id="speak-word" class="icon-btn ghost" type="button" title="Hear the word">
+          <svg class="icon"><use href="#i-volume-on"></use></svg>
+          <span class="sr-only">Hear the word</span>
+        </button>
+      </div>
+    </div>
+
+
+    <!-- Le due card che l'occhio confronta di continuo -->
+    <main class="lesson-stage">
+
+      <!-- Colonna demo: piu' piccola della webcam, di proposito -->
+      <section class="stage-col demo-col">
+        <div class="card demo-card">
+          <span class="card-tag">Demo</span>
+          <!-- autoplay oltre al play() da codice: se la scheda e' nascosta al
+               caricamento il browser sospende il video, e l'attributo lo fa
+               ripartire da solo appena la pagina torna visibile -->
+          <video id="demo-video" loop muted playsinline autoplay preload="auto"></video>
+          <p class="demo-missing" id="demo-missing" hidden>No demo for this sign</p>
+          <div class="demo-controls">
+            <button id="demo-play" class="pill-btn" type="button" aria-pressed="false" title="Pause / play (Space)">
+              <svg class="icon icon-pause"><use href="#i-pause"></use></svg>
+              <svg class="icon icon-play"><use href="#i-play"></use></svg>
+              <span class="sr-only">Pause or play the demo</span>
+            </button>
+            <button id="demo-slow" class="pill-btn" type="button" aria-pressed="false" title="Half speed">
+              <span aria-hidden="true">0.5&times;</span>
+              <span class="sr-only">Play at half speed</span>
+            </button>
+            <button id="demo-mirror" class="pill-btn" type="button" aria-pressed="false" title="Mirror the demo">
+              <svg class="icon"><use href="#i-mirror"></use></svg>
+              <span class="sr-only">Mirror the demo</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Colonna webcam: l'elemento dominante della schermata -->
+      <section class="stage-col you-col">
+        <div class="card cam-card" id="cam-card" data-state="idle">
+          <span class="card-tag right">You</span>
+          <video id="webcam" autoplay playsinline muted></video>
+          <canvas id="overlay"></canvas>
+
+          <!-- Canale di stato unico, sul bordo: colore + movimento,
+               leggibili in visione periferica mentre si guardano le mani. -->
+          <div class="cam-ring" aria-hidden="true"></div>
+
+          <div class="cam-badge">
+            <span class="badge-dot" aria-hidden="true"></span>
+            <span id="cam-badge-text">Ready</span>
+          </div>
+
+          <!-- Glifo del verdetto: mai il colore da solo -->
+          <div class="cam-verdict" id="cam-verdict" aria-hidden="true">
+            <svg class="icon v-ok"><use href="#i-check"></use></svg>
+            <svg class="icon v-no"><use href="#i-retry"></use></svg>
+          </div>
+
+          <!-- Suggerimento non bloccante (mani fuori campo, cattura breve) -->
+          <p class="cam-hint" id="cam-hint" hidden></p>
+
+          <!-- Stati che coprono la card: permessi, errori, fine lezione -->
+          <div class="cam-cover" id="cam-cover" hidden>
+            <svg class="icon cover-icon" id="cover-icon"><use href="#i-camera"></use></svg>
+            <h3 class="cover-title" id="cover-title"></h3>
+            <p class="cover-text" id="cover-text"></p>
+            <div class="cover-actions" id="cover-actions"></div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Verdetto: sale dal basso solo quando c'e' qualcosa da dire.
+         Lo spazio pero' resta occupato sempre: se comparendo accorciasse il
+         palco, le due card salterebbero verso l'alto proprio nell'istante in
+         cui l'utente le sta guardando. -->
+    <div class="feedback-slot">
+    <div class="feedback" id="feedback" role="status" aria-live="polite" hidden>
+      <span class="fb-glyph" aria-hidden="true">
+        <svg class="icon fb-ok"><use href="#i-check"></use></svg>
+        <svg class="icon fb-no"><use href="#i-retry"></use></svg>
+      </span>
+      <p class="fb-text" id="fb-text"></p>
+      <div class="fb-actions">
+        <button id="fb-again" class="btn subtle" type="button" hidden>Watch again</button>
+        <button id="fb-skip" class="btn subtle" type="button" hidden>Skip this sign</button>
+      </div>
+      <span class="fb-timer" id="fb-timer" aria-hidden="true"></span>
+    </div>
+    </div>
+
+    <!-- Diagnostica: fuori dalla vista di chi impara, a portata di chi tara -->
+    <aside class="debug-panel" id="debug-panel" hidden aria-label="Diagnostics">
+      <h3>Capture diagnostics</h3>
+      <div class="meter">
+        <div class="meter-track">
+          <div class="meter-fill" id="dbg-fill"></div>
+          <span class="meter-mark mark-exit" id="dbg-mark-exit"><i></i><b>exit</b></span>
+          <span class="meter-mark mark-enter" id="dbg-mark-enter"><i></i><b>enter</b></span>
+        </div>
+        <span class="meter-value" id="dbg-movement">0.00</span>
+      </div>
+      <dl class="dbg-rows">
+        <div><dt>State</dt><dd id="dbg-state">idle</dd></div>
+        <div><dt>Last sign</dt><dd id="dbg-last">—</dd></div>
+        <div><dt>Confidence</dt><dd id="dbg-conf">—</dd></div>
+        <div><dt>Discarded</dt><dd id="dbg-discarded">—</dd></div>
+        <div><dt>Captures</dt><dd id="dbg-captures">0</dd></div>
+      </dl>
+      <p class="dbg-note">Thresholds live in <code>server.py</code> — restart after changing them.</p>
+    </aside>
+
+  </div>
+
+
+  <!-- ===================== FREE TRAINING ===================== -->
+  <!-- Fuori ambito in questo passaggio: resta la schermata di prova. -->
   <div id="app-screen" class="screen hidden">
     <div class="app-container">
       <header>
-        <h1>DuoSL – Sign Language Practice <span class="badge">capture mode</span></h1>
+        <h1>DuoSL – Free Training <span class="badge">capture mode</span></h1>
         <p>Show your sign in front of the camera</p>
       </header>
 
       <main class="main-content">
         <div class="camera-wrapper">
-          <video id="webcam" autoplay playsinline></video>
-          <canvas id="overlay"></canvas>
+          <video id="free-webcam" autoplay playsinline muted></video>
+          <canvas id="free-overlay"></canvas>
           <div class="capture-indicator">
             <span id="capture-dot"></span>
             <span id="capture-text">Not Capturing</span>
@@ -89,12 +268,7 @@
 
         <div class="info-panel">
           <label for="message">Message / Feedback:</label>
-          <input
-            type="text"
-            id="message"
-            placeholder="Detected sign will appear here..."
-            readonly
-          />
+          <input type="text" id="message" placeholder="Detected sign will appear here..." readonly />
           <button id="start-btn">Start Camera</button>
           <button id="back-btn" type="button">Back to Menu</button>
         </div>
@@ -102,6 +276,6 @@
     </div>
   </div>
 
-  <script src="/static/app.js"></script>
+  <script type="module" src="/static/app.js"></script>
 </body>
 </html>
