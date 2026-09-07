@@ -121,7 +121,6 @@ export class LessonView {
 
       feedback: $('feedback'),
       fbText: $('fb-text'),
-      fbAgain: $('fb-again'),
       fbSkip: $('fb-skip'),
       fbTimer: $('fb-timer'),
 
@@ -311,7 +310,6 @@ export class LessonView {
     on(this.el.demoSlow, 'click', () => this._toggleDemoSlow());
     on(this.el.demoMirror, 'click', () => this._toggleDemoMirror());
 
-    on(this.el.fbAgain, 'click', () => this._watchAgain());
     on(this.el.fbSkip, 'click', () => this._skip());
 
     // Se il video finisce fuori loop (sorgente senza loop pulito), riparte.
@@ -820,7 +818,6 @@ export class LessonView {
   _showFeedback({ kind, text, again = false, skip = false, autoMs = 0 }) {
     this.el.feedback.dataset.kind = kind;
     this.el.fbText.textContent = text;
-    this.el.fbAgain.hidden = !again;
     this.el.fbSkip.hidden = !skip;
     this.el.feedback.hidden = false;
 
