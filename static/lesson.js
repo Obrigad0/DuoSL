@@ -10,6 +10,7 @@
 
 import { SignSession } from './session.js';
 import { Speech } from './speech.js';
+import { Progress, KNOWN, REVIEW } from './progress.js';
 
 const ADVANCE_DELAY_MS = 1200;   // quanto resta a schermo il verdetto positivo
 const SKIP_AFTER_WRONG = 2;      // errori consecutivi prima di offrire lo skip
@@ -389,6 +390,7 @@ export class LessonView {
 
       if (msg.correct) {
         this.wrongStreak = 0;
+        Progress.markSign(msg.attempted_gloss, KNOWN, this.lessonId);
         this._setCamState('correct');
         this._hideHint();
         this._showFeedback({
@@ -727,6 +729,10 @@ export class LessonView {
   /** Fa passare lo step come riuscito: il server avanza con lo stesso comando dello skip. */
   _acceptAnyway(msg) {
     this.wrongStreak = 0;
+    // Per l'utente questo step e' riuscito, quindi in libreria va fra i
+    // conosciuti: il server non potrebbe saperlo, perche' l'avanzamento qui
+    // sotto usa lo stesso comando "skip" di uno skip vero.
+    Progress.markSign(msg.attempted_gloss, KNOWN, this.lessonId);
     this._setCamState('correct');
     this._hideHint();
     this._showFeedback({
@@ -756,6 +762,8 @@ export class LessonView {
 
   _skip() {
     this.skipped.add(this.currentIndex);
+    const step = this.steps[this.currentIndex];
+    if (step) Progress.markSign(step.gloss, REVIEW, this.lessonId);
     this._hideFeedback();
     if (this.session) this.session.skip();
   }
@@ -885,6 +893,7 @@ export class LessonView {
     this._renderProgress();
 
     const done = this.stepStatus.filter(s => s === 'done').length;
+    Progress.markLesson(this.lessonId, done, this.totalSteps);
     this.el.demo.pause();
     this.el.word.textContent = 'All done';
     this._setCamState('idle');
@@ -985,7 +994,7 @@ export class LessonView {
     window.__duosl = {
       simulate: (kind) => {
         const step = this.steps[this.currentIndex];
-        const label = step ? step.display : 'HELLO';
+        const label = step ? step.display : 'HELLO';   // gloss vero in attempted_gloss: il server lo manda sempre
         switch (kind) {
           case 'capturing': this._setCamState('capturing'); break;
           case 'ready':     this._setCamState('ready'); break;
@@ -995,6 +1004,7 @@ export class LessonView {
               total_steps: this.totalSteps,
               target_display: (this.steps[this.currentIndex + 1] || {}).display || null,
               target_demo_url: (this.steps[this.currentIndex + 1] || {}).demo_url || null,
+              attempted_gloss: step ? step.gloss : 'HELLO',
               attempted_display: label,
               last_gloss: label,
               last_confidence: 0.93,
@@ -1008,6 +1018,7 @@ export class LessonView {
               step_index: this.currentIndex,
               total_steps: this.totalSteps,
               target_display: label,
+              attempted_gloss: step ? step.gloss : 'HELLO',
               attempted_display: label,
               last_gloss: 'FINE',
               last_confidence: 0.44,

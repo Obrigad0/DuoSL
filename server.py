@@ -20,7 +20,7 @@ import asyncio
 from collections import deque
 from pathlib import Path
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 import cv2
@@ -31,11 +31,14 @@ import tensorflow as tf
 from utils import live_translation
 from utils import preprocessing_split as preprocessing
 from utils import lesson_engine
+from utils import progress_store
 
 BASE_DIR = Path(__file__).resolve().parent
 MODEL_PATH = BASE_DIR / "models" / "best_model200.keras"
 ENCODER_PATH = BASE_DIR / "models" / "index_to_gloss_200.json"
 LECTURES_DIR = BASE_DIR / "lectures"
+DATA_DIR = BASE_DIR / "data"
+PROGRESS_PATH = DATA_DIR / "progress.json"
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
@@ -53,7 +56,9 @@ async def no_cache_assets(request, call_next):
     app.js/style.css, facendo sembrare rotto codice che era gia' corretto.
     """
     response = await call_next(request)
-    if request.url.path == "/" or request.url.path.startswith("/static"):
+    if (request.url.path == "/"
+            or request.url.path.startswith("/static")
+            or request.url.path.startswith("/api")):
         response.headers["Cache-Control"] = "no-store, must-revalidate"
     return response
 
@@ -68,7 +73,7 @@ mp_drawing = mp.solutions.drawing_utils
 mp_holistic = mp.solutions.holistic
 holistic = mp_holistic.Holistic(
     static_image_mode=False,
-    model_complexity=0,
+    model_complexity=1,
     enable_segmentation=False,
     refine_face_landmarks=False,
     min_detection_confidence=0.6,
@@ -192,6 +197,72 @@ def classify_capture(landmark_stored):
 @app.get("/")
 async def get_index():
     return FileResponse(str(BASE_DIR / "static" / "index.html"))
+
+
+# ----------------------------- progressi dell'utente ------------------------
+#
+# L'unico stato del progetto che sopravvive al riavvio.
+#
+#   catalogo  -> ricostruito qui ad ogni avvio dalle lezioni: nome e video di
+#                ogni gloss. Non si salva, cosi' correggere un display_text in
+#                una lezione si vede subito ovunque.
+#   progresso -> data/progress.json: solo status, contatori e date.
+#
+# A registrare e' il CLIENT, non la sessione lato server. Sembra al contrario,
+# ma LessonSession non e' in grado di distinguere uno skip vero da uno step
+# fatto passare dall'indulgenza debug: usano lo stesso comando "skip". Il
+# client invece conosce l'esito vero e sopravvive alle riconnessioni.
+
+catalog = progress_store.build_catalog(str(LECTURES_DIR))
+progress = progress_store.ProgressStore(PROGRESS_PATH)
+progress_lock = asyncio.Lock()   # le rotte fanno leggi-modifica-scrivi
+
+
+async def _body(request):
+    """Corpo JSON della richiesta, o {} se manca o e' malformato."""
+    try:
+        data = await request.json()
+    except Exception:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+@app.get("/api/progress")
+async def api_progress():
+    async with progress_lock:
+        return progress.view(catalog)
+
+
+@app.post("/api/progress/sign")
+async def api_progress_sign(request: Request):
+    body = await _body(request)
+    async with progress_lock:
+        progress.record_sign(
+            str(body.get("gloss") or ""),
+            str(body.get("status") or ""),
+            body.get("lesson"),
+        )
+        return progress.view(catalog)
+
+
+@app.post("/api/progress/lesson")
+async def api_progress_lesson(request: Request):
+    body = await _body(request)
+    try:
+        done = int(body.get("done") or 0)
+        total = int(body.get("total") or 0)
+    except (TypeError, ValueError):
+        done, total = 0, 0
+    async with progress_lock:
+        progress.record_lesson(str(body.get("lesson") or ""), done, total)
+        return progress.view(catalog)
+
+
+@app.post("/api/progress/reset")
+async def api_progress_reset():
+    async with progress_lock:
+        progress.reset()
+        return progress.view(catalog)
 
 
 def lesson_payload(result):

@@ -27,6 +27,8 @@
     <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4.5M12 17.2h.01"/></symbol>
     <symbol id="i-camera" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></symbol>
     <symbol id="i-hand" viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v7M10 10.5V6a2 2 0 0 0-4 0v9"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2a8 8 0 0 1-8-8v-1a2 2 0 1 1 4 0"/></symbol>
+    <symbol id="i-library" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></symbol>
     <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M13 5l7 7-7 7"/></symbol>
   </svg>
 
@@ -58,6 +60,37 @@
           <div class="menu-buttons">
             <button id="lessons-btn">Lessons</button>
             <button id="free-btn">Free Training</button>
+          </div>
+
+          <!-- Strumento, non funzione: stile deliberatamente sottotono, la
+               stessa convenzione del pannello diagnostica in lezione. -->
+          <div class="menu-debug">
+            <button id="menu-debug-toggle" class="chip-btn quiet" type="button"
+                    aria-expanded="false" aria-controls="menu-debug-panel">
+              <svg class="icon"><use href="#i-sliders"></use></svg>
+              <span class="chip-label">Debug</span>
+            </button>
+
+            <div class="menu-debug-panel" id="menu-debug-panel" hidden>
+              <!-- I conteggi non sono decorativi: sono la prova che il reset
+                   ha davvero fatto qualcosa. -->
+              <p class="dbg-progress" id="menu-progress-line">Reading progress…</p>
+
+              <div id="menu-reset-wrap">
+                <button id="menu-reset" class="btn danger" type="button">
+                  <svg class="icon"><use href="#i-trash"></use></svg>
+                  Reset progress
+                </button>
+              </div>
+
+              <div class="dbg-confirm" id="menu-reset-confirm" hidden>
+                <p>Delete every lesson and sign learned so far?</p>
+                <div class="dbg-confirm-actions">
+                  <button id="menu-reset-yes" class="btn danger" type="button">Yes, reset everything</button>
+                  <button id="menu-reset-no" class="btn subtle" type="button">Cancel</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -270,33 +303,139 @@
 
 
   <!-- ===================== FREE TRAINING ===================== -->
-  <!-- Fuori ambito in questo passaggio: resta la schermata di prova. -->
-  <div id="app-screen" class="screen hidden">
-    <div class="app-container">
-      <header>
-        <h1>DuoSL – Free Training <span class="badge">capture mode</span></h1>
-        <p>Show your sign in front of the camera</p>
-      </header>
+  <!-- Stessa lingua visiva della lezione: webcam dominante, e accanto (solo
+       se si appunta un segno dalla libreria) la demo, con lo stesso rapporto
+       di dimensioni. -->
+  <div id="app-screen" class="screen free-screen hidden">
 
-      <main class="main-content">
-        <div class="camera-wrapper">
-          <video id="free-webcam" autoplay playsinline muted></video>
-          <canvas id="free-overlay"></canvas>
-          <div class="capture-indicator">
-            <span id="capture-dot"></span>
-            <span id="capture-text">Not Capturing</span>
+    <header class="lesson-bar">
+      <button id="free-exit" class="icon-btn" type="button" title="Back to menu (Esc)">
+        <svg class="icon"><use href="#i-close"></use></svg>
+        <span class="sr-only">Back to menu</span>
+      </button>
+
+      <div class="free-title">
+        <h1>Free Training</h1>
+        <p>Make any sign you know — DuoSL will name it</p>
+      </div>
+
+      <div class="bar-actions">
+        <button id="free-library" class="chip-btn" type="button"
+                aria-expanded="false" aria-controls="library-drawer"
+                title="The signs you have learned (L)">
+          <svg class="icon"><use href="#i-library"></use></svg>
+          <span class="chip-label">Library</span>
+          <span class="chip-count" id="library-count">0</span>
+        </button>
+        <button id="free-voice" class="chip-btn" type="button" aria-pressed="false"
+                title="Read the recognised sign aloud (V)">
+          <svg class="icon icon-on"><use href="#i-volume-on"></use></svg>
+          <svg class="icon icon-off"><use href="#i-volume-off"></use></svg>
+          <span class="chip-label" id="free-voice-label">Voice off</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="free-body">
+
+      <main class="free-stage" id="free-stage">
+
+        <!-- Colonna demo: esiste solo quando un segno viene appuntato dalla
+             libreria. Chiusa, non occupa spazio e il palco si riallarga. -->
+        <section class="stage-col demo-col" id="free-demo-col" hidden>
+          <div class="card demo-card">
+            <span class="card-tag" id="free-demo-tag">Demo</span>
+            <video id="free-demo-video" loop muted playsinline preload="none"></video>
+            <button id="free-demo-close" class="icon-btn demo-close" type="button" title="Unpin this sign">
+              <svg class="icon"><use href="#i-close"></use></svg>
+              <span class="sr-only">Unpin this sign</span>
+            </button>
+            <div class="demo-controls">
+              <button id="free-demo-play" class="pill-btn" type="button" aria-pressed="false" title="Pause / play (Space)">
+                <svg class="icon icon-pause"><use href="#i-pause"></use></svg>
+                <svg class="icon icon-play"><use href="#i-play"></use></svg>
+                <span class="sr-only">Pause or play the demo</span>
+              </button>
+              <button id="free-demo-slow" class="pill-btn" type="button" aria-pressed="false" title="Half speed">
+                <span aria-hidden="true">0.5&times;</span>
+                <span class="sr-only">Play at half speed</span>
+              </button>
+              <button id="free-demo-mirror" class="pill-btn" type="button" aria-pressed="false" title="Mirror the demo">
+                <svg class="icon"><use href="#i-mirror"></use></svg>
+                <span class="sr-only">Mirror the demo</span>
+              </button>
+            </div>
           </div>
+        </section>
+
+        <section class="stage-col you-col">
+          <div class="card cam-card" id="free-cam-card" data-state="idle">
+            <span class="card-tag right">You</span>
+            <video id="free-webcam" autoplay playsinline muted></video>
+            <canvas id="free-overlay"></canvas>
+
+            <div class="cam-ring" aria-hidden="true"></div>
+
+            <div class="cam-badge">
+              <span class="badge-dot" aria-hidden="true"></span>
+              <span id="free-badge-text">Camera off</span>
+            </div>
+
+            <p class="cam-hint" id="free-hint" hidden></p>
+
+            <div class="cam-cover" id="free-cover" hidden>
+              <svg class="icon cover-icon" id="free-cover-icon"><use href="#i-camera"></use></svg>
+              <h3 class="cover-title" id="free-cover-title"></h3>
+              <p class="cover-text" id="free-cover-text"></p>
+              <div class="cover-actions" id="free-cover-actions"></div>
+            </div>
+          </div>
+
+          <!-- Il risultato: cio' che l'occhio cerca appena finito il gesto. -->
+          <div class="result" id="free-result" data-state="empty">
+            <p class="result-eyebrow">Last sign</p>
+            <div class="result-row">
+              <h2 class="result-word" id="free-result-word">Make a sign</h2>
+              <button id="free-speak" class="icon-btn ghost" type="button" title="Hear the word" hidden>
+                <svg class="icon"><use href="#i-volume-on"></use></svg>
+                <span class="sr-only">Hear the word</span>
+              </button>
+            </div>
+            <!-- Piccola e chiamata "confidence", non "accuracy": e' il softmax
+                 del classificatore e non e' calibrato, resta sopra il 90% anche
+                 quando sbaglia. Darle risalto insegnerebbe a fidarsene troppo. -->
+            <div class="result-conf" id="free-conf" hidden>
+              <span class="conf-label">confidence</span>
+              <span class="conf-track"><span class="conf-fill" id="free-conf-fill"></span></span>
+              <span class="conf-value" id="free-conf-value">—</span>
+            </div>
+          </div>
+        </section>
+
+      </main>
+
+      <!-- Libreria: affianca il palco e lo restringe, non lo copre. -->
+      <aside class="library" id="library-drawer" role="complementary" aria-label="Your signs">
+        <header class="lib-head">
+          <h2 class="lib-title" id="lib-title" tabindex="-1">Your signs</h2>
+          <button id="lib-close" class="icon-btn" type="button" title="Close the library (Esc)">
+            <svg class="icon"><use href="#i-close"></use></svg>
+            <span class="sr-only">Close the library</span>
+          </button>
+        </header>
+
+        <div class="lib-filters" role="group" aria-label="Filter">
+          <button class="seg" type="button" data-filter="all" aria-pressed="true">All</button>
+          <button class="seg" type="button" data-filter="known" aria-pressed="false">Known</button>
+          <button class="seg" type="button" data-filter="review" aria-pressed="false">To review</button>
         </div>
 
-        <div class="info-panel">
-          <label for="message">Message / Feedback:</label>
-          <input type="text" id="message" placeholder="Detected sign will appear here..." readonly />
-          <button id="start-btn">Start Camera</button>
-          <button id="back-btn" type="button">Back to Menu</button>
-        </div>
-      </main>
+        <div class="lib-body" id="lib-body"></div>
+      </aside>
+
     </div>
   </div>
+
 
   <script type="module" src="/static/app.js"></script>
 </body>

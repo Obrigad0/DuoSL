@@ -4,7 +4,7 @@
    1. Token          6. Schermata lezione — barra e progresso
    2. Base e reset   7. Schermata lezione — palco (demo + webcam)
    3. Utility        8. Schermata lezione — feedback e diagnostica
-   4. Bottoni        9. Menu e Free Training (invariati, in attesa del loro turno)
+   4. Bottoni        9. Menu, debug, Free Training e libreria dei segni
    5. Schermate     10. Responsive e preferenze di movimento
    ========================================================================== */
 
@@ -259,10 +259,12 @@ button { font: inherit; color: inherit; }
 .chip-btn:disabled { opacity: .45; cursor: default; }
 
 /* Il toggle voce scambia le due icone in base allo stato */
-#voice-toggle .icon-off { display: block; }
-#voice-toggle .icon-on  { display: none; }
-#voice-toggle[aria-pressed="true"] .icon-off { display: none; }
-#voice-toggle[aria-pressed="true"] .icon-on  { display: block; }
+#voice-toggle .icon-off, #free-voice .icon-off { display: block; }
+#voice-toggle .icon-on,  #free-voice .icon-on  { display: none; }
+#voice-toggle[aria-pressed="true"] .icon-off,
+#free-voice[aria-pressed="true"]   .icon-off { display: none; }
+#voice-toggle[aria-pressed="true"] .icon-on,
+#free-voice[aria-pressed="true"]   .icon-on  { display: block; }
 
 .btn {
   display: inline-flex;
@@ -737,14 +739,14 @@ button { font: inherit; color: inherit; }
 
 /* `contain` e non `cover`: su un segno un ritaglio automatico puo' mangiarsi
    una mano. Le proporzioni disomogenee dei video le assorbe il pannello. */
-#demo-video {
+#demo-video, #free-demo-video {
   width: 100%; height: 100%;
   object-fit: contain;
   display: block;
   background: var(--stage-900);
   transition: transform var(--dur) var(--ease);
 }
-#demo-video.mirrored { transform: scaleX(-1); }
+#demo-video.mirrored, #free-demo-video.mirrored { transform: scaleX(-1); }
 
 .demo-missing {
   position: absolute;
@@ -778,7 +780,7 @@ button { font: inherit; color: inherit; }
 
 /* --- Card webcam --- */
 
-#webcam, #overlay {
+#webcam, #overlay, #free-webcam, #free-overlay {
   position: absolute;
   inset: 0;
   width: 100%; height: 100%;
@@ -788,7 +790,7 @@ button { font: inherit; color: inherit; }
 
 /* Il canvas non ha fondo opaco: finche' non arriva il primo frame annotato
    si vede il video grezzo sotto, cosi' la camera da' riscontro immediato. */
-#overlay { background: transparent; }
+#overlay, #free-overlay { background: transparent; }
 
 /* --- L'anello di stato -----------------------------------------------
    Un solo canale, sul bordo del video, dove l'occhio gia' sta. Colore,
@@ -1127,7 +1129,7 @@ button { font: inherit; color: inherit; }
 }
 
 
-/* ========== 9. MENU E FREE TRAINING (in attesa del loro turno) =========== */
+/* ========== 9. MENU, FREE TRAINING E LIBRERIA DEI SEGNI ================== */
 
 .menu-page .app-container {
   max-width: min(1400px, 92vw);
@@ -1196,99 +1198,401 @@ button { font: inherit; color: inherit; }
 .menu-page .logo-side { flex: 1 1 220px; display: flex; justify-content: center; align-items: center; }
 .menu-page .logo-img { max-width: 100%; height: auto; max-height: 220px; }
 
-/* Free Training: schermata di prova, invariata */
-#app-screen header { text-align: center; margin-bottom: var(--s-6); }
-#app-screen header h1 { font-size: var(--t-2xl); margin-bottom: var(--s-2); }
-#app-screen header p { color: var(--n-700); }
+/* --- Pannello debug del menu: azzera la memoria dei progressi ------------
+   Sottotono di proposito (stessa convenzione del pannello diagnostica in
+   lezione): e' uno strumento, non una funzione dell'app. */
 
-#app-screen .badge {
-  font-size: .9rem;
-  font-weight: 700;
-  color: #052e1f;
-  background: #6ee7b7;
-  padding: 2px 10px;
-  border-radius: var(--r-pill);
-  vertical-align: middle;
-  margin-left: var(--s-2);
-}
-
-.main-content { display: flex; flex-direction: column; gap: var(--s-5); }
-
-.camera-wrapper {
-  position: relative;
-  width: 100%;
-  max-width: 640px;
-  margin: 0 auto;
-  border-radius: var(--r-card);
-  overflow: hidden;
-  border: 4px solid var(--n-700);
-  box-shadow: var(--sh-3);
-  background: var(--stage-900);
-  aspect-ratio: 4 / 3;
-}
-
-#free-webcam, #free-overlay {
-  position: absolute;
-  inset: 0;
-  width: 100%; height: 100%;
-  object-fit: cover;
-  transform: scaleX(-1);
-}
-
-.capture-indicator {
-  position: absolute;
-  top: var(--s-3); left: var(--s-3);
+.menu-debug {
+  margin-top: var(--s-7);
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--s-2);
-  padding: 6px var(--s-3);
-  border-radius: var(--r-pill);
-  background: rgba(2, 6, 23, .85);
-  font-size: .85rem;
-  font-weight: 700;
-  color: var(--n-200);
+  gap: var(--s-3);
+  width: 100%;
+  max-width: 320px;
 }
-#capture-dot {
-  width: 12px; height: 12px;
-  border-radius: 50%;
-  background: #ef4444;
-  transition: background var(--dur-fast) var(--ease);
-}
-#capture-dot.active { background: var(--ok-600); }
 
-.info-panel {
+.menu-debug-panel {
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: var(--s-3);
-  max-width: 640px;
-  margin: 0 auto;
-  width: 100%;
+  padding: var(--s-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  box-shadow: var(--sh-1);
+  text-align: left;
 }
-.info-panel label { font-size: .9rem; color: var(--n-800); font-weight: 600; }
 
-#message {
-  width: 100%;
-  padding: var(--s-3) 14px;
-  border-radius: 10px;
-  border: 2px solid var(--n-700);
-  background: var(--stage-900);
+/* I conteggi sono la prova che il reset ha fatto qualcosa: non decorativi. */
+.dbg-progress { font-size: var(--t-sm); color: var(--text-soft); line-height: 1.6; }
+.dbg-progress b { color: var(--text); font-variant-numeric: tabular-nums; }
+
+.dbg-confirm p { font-size: var(--t-sm); color: var(--text); margin-bottom: var(--s-3); line-height: 1.5; }
+.dbg-confirm-actions { display: flex; flex-direction: column; gap: var(--s-2); }
+
+.btn.danger { background: #b42318; color: var(--n-0); }
+.btn.danger:hover { background: #912018; }
+.btn.danger .icon { width: 16px; height: 16px; }
+
+
+/* ======================= FREE TRAINING ==================================
+   Stessa lingua della lezione. Due modi: sola webcam, oppure webcam piu'
+   la demo di un segno appuntato dalla libreria - e in quel caso lo stesso
+   rapporto di dimensioni della lezione (demo al 74%, webcam dominante). */
+
+.free-screen {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: var(--s-4);
+  padding: var(--s-5) var(--s-7) var(--s-7);
+  position: relative;
+  background: linear-gradient(180deg,
+              var(--bg) 0%,
+              var(--bg) 42%,
+              rgba(241, 245, 249, .82) 70%,
+              rgba(241, 245, 249, .55) 100%);
+
+  /* Altezza DEFINITA, non solo minima: e' cio' che permette alla libreria di
+     scorrere al proprio interno. Con `min-height` la colonna cresceva col
+     contenuto, `flex:1` su .free-body si risolveva contro un'altezza
+     indefinita e una libreria piena allungava l'intera pagina. */
+  height: 100vh;
+  min-height: 100vh;
+
+  /* A libreria chiusa il pannello e' largo zero, ma i suoi figli restano a
+     356px: il suo overflow:hidden li nasconde alla vista e NON alla pagina,
+     che si ritrovava 274px di scorrimento orizzontale. "clip" taglia davvero
+     e, a differenza di hidden, non forza l'altro asse a scorrere. Sotto i
+     1100px il pannello e' position:fixed e quindi non viene tagliato: e'
+     proprio li' che deve poter sovrapporsi. */
+  overflow-x: clip;
+
+  /* La libreria RESTRINGE il palco invece di coprirlo: la sua larghezza entra
+     nel calcolo dell'altezza della camera, cosi' aprendola le card rimpiccio-
+     liscono con la stessa transizione invece di finire sotto il pannello. */
+  --lib-open-w: 356px;
+  --lib-w: 0px;
+
+  /* 1.34 = sola webcam (4/3 piu' margine); 2.14 = demo + webcam, come in
+     lezione. Cambia la classe, non la formula. */
+  --stage-ratio: 1.34;
+
+  --free-cam-h: max(200px, min(calc(100vh - 15rem), 560px,
+                    calc((100vw - var(--lib-w) - 7rem) / var(--stage-ratio))));
+}
+
+.free-screen.lib-open   { --lib-w: var(--lib-open-w); }
+.free-screen.has-pinned { --stage-ratio: 2.14; }
+
+.free-title { flex: 1; min-width: 0; }
+.free-title h1 { font-size: var(--t-lg); font-weight: 800; letter-spacing: -.01em; }
+.free-title p  { font-size: var(--t-sm); color: var(--text-mute); }
+
+.free-body {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  gap: var(--s-5);
+  min-height: 0;
+}
+
+.free-stage {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;         /* la demo sta a meta' altezza della webcam */
+  justify-content: center;
+  gap: var(--s-6);
+
+  --demo-size: calc(var(--free-cam-h) * .74);
+  --cam-size: var(--free-cam-h);
+}
+
+.free-stage .you-col { gap: var(--s-4); align-items: center; }
+
+/* Pulsante per staccare il segno appuntato: sta sulla card, non sotto, cosi'
+   non ruba altezza al palco. */
+.demo-close {
+  position: absolute;
+  top: var(--s-2); right: var(--s-2);
+  z-index: 2;
+  background: rgba(2, 6, 23, .5);
   color: var(--stage-fg);
-  font-size: var(--t-md);
-  outline: none;
+  opacity: 0;
+  transition: opacity var(--dur) var(--ease), background var(--dur) var(--ease);
 }
-#message:focus { border-color: var(--brand-700); }
+.demo-card:hover .demo-close,
+.demo-close:focus-visible { opacity: 1; }
+.demo-close:hover { background: rgba(2, 6, 23, .78); }
 
-#start-btn, #back-btn {
-  padding: 10px var(--s-4);
-  border: none;
-  border-radius: 10px;
-  background: var(--brand-700);
-  color: #f0fdfa;
+
+/* --- Il segno riconosciuto ---------------------------------------------
+   E' il risultato, non il compito: stesso trattamento del prompt in lezione
+   ma sotto la webcam, dove l'occhio arriva appena finito il gesto. */
+
+.result {
+  width: calc(var(--cam-size) * 4 / 3);
+  max-width: 100%;
+  /* Mai comprimibile: e' l'altezza della camera ad adattarsi allo spazio,
+     non la parola riconosciuta a rimpicciolirsi su finestre basse. */
+  flex: none;
+  padding: var(--s-3) var(--s-5) 14px;
+  border: 1px solid transparent;
+  border-radius: var(--r-card);
+  background: linear-gradient(135deg, var(--brand-700), var(--brand-900));
+  color: var(--n-0);
+  box-shadow: var(--sh-2);
+  transition: width var(--dur-slow) var(--ease),
+              background var(--dur) var(--ease);
+}
+
+/* Prima del primo riconoscimento non c'e' niente da annunciare: la card resta
+   in sordina invece di gridare uno stato vuoto. */
+.result[data-state="empty"] {
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: var(--sh-1);
+  color: var(--text-mute);
+}
+
+.result-eyebrow {
+  font-size: var(--t-xs);
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  opacity: .75;
+}
+
+.result-row { display: flex; align-items: center; gap: var(--s-3); }
+
+.result-word {
+  font-size: clamp(1.5rem, 3.4vw, 2.3rem);
+  font-weight: 800;
+  letter-spacing: -.015em;
+  line-height: 1.15;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.result[data-state="empty"] .result-word { font-size: var(--t-lg); font-weight: 600; }
+.result[data-state="unknown"] .result-word { font-size: var(--t-xl); opacity: .85; }
+.result-word.is-new { animation: word-in 380ms var(--ease-back); }
+
+#free-speak {
+  flex: none;
+  background: rgba(255, 255, 255, .18);
+  color: var(--n-0);
+}
+#free-speak:hover { background: rgba(255, 255, 255, .3); }
+
+/* Piccola e chiamata "confidence": e' il softmax del classificatore, non e'
+   calibrato e resta alto anche quando sbaglia. Darle risalto insegnerebbe a
+   fidarsene piu' di quanto meriti. */
+.result-conf {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin-top: 6px;
+  font-size: var(--t-xs);
+}
+.conf-label { text-transform: uppercase; letter-spacing: .1em; font-weight: 700; opacity: .7; }
+.conf-track {
+  flex: 1;
+  max-width: 170px;
+  height: 5px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, .22);
+  overflow: hidden;
+}
+.conf-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: var(--brand-200);
+  transition: width var(--dur-slow) var(--ease);
+}
+.conf-value { font-variant-numeric: tabular-nums; font-weight: 700; opacity: .9; }
+
+
+/* --- Libreria dei segni -------------------------------------------------
+   Complementary, non modale: la pagina sotto resta usabile mentre e' aperta,
+   che e' il motivo per cui e' un drawer e non una finestra. */
+
+.library {
+  flex: none;
+  width: var(--lib-w);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  box-shadow: var(--sh-2);
+  opacity: 0;
+  min-height: 0;
+  transition: width var(--dur-slow) var(--ease), opacity var(--dur) var(--ease);
+}
+/* A larghezza zero il bordo si vedrebbe comunque come una riga di 2px */
+.free-screen:not(.lib-open) .library { border-width: 0; }
+.free-screen.lib-open .library { opacity: 1; }
+
+/* Larghezza fissa ai figli: senza, durante la transizione il contenuto si
+   riflowa ad ogni frame e il testo balla. */
+.lib-head, .lib-filters { flex: none; width: var(--lib-open-w); }
+.lib-body { flex: 1; min-height: 0; width: var(--lib-open-w); overflow-y: auto; overscroll-behavior: contain; }
+
+.lib-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-4) var(--s-4) var(--s-3);
+}
+.lib-title { font-size: var(--t-md); font-weight: 800; }
+.lib-title:focus-visible { outline-offset: 4px; }
+
+.lib-filters { display: flex; gap: 4px; padding: 0 var(--s-4) var(--s-3); }
+.seg {
+  flex: 1;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--text-mute);
+  font-size: var(--t-xs);
   font-weight: 700;
   cursor: pointer;
-  transition: background var(--dur) var(--ease);
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
-#start-btn:hover, #back-btn:hover { background: var(--brand-800); }
+.seg:hover { color: var(--text); border-color: var(--n-300); }
+.seg[aria-pressed="true"] { background: var(--n-800); border-color: var(--n-800); color: var(--n-0); }
+
+.lib-section { padding: 0 var(--s-4) var(--s-4); }
+.lib-section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin: var(--s-2) 0 var(--s-3);
+  font-size: var(--t-xs);
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+}
+.lib-section-title .count {
+  padding: 1px 7px;
+  border-radius: var(--r-pill);
+  background: var(--n-100);
+  font-variant-numeric: tabular-nums;
+}
+
+.lib-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s-3); }
+
+.lib-card {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--r-btn);
+  background: var(--n-50);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--dur-fast) var(--ease),
+              box-shadow var(--dur-fast) var(--ease),
+              transform var(--dur-fast) var(--ease);
+}
+.lib-card:hover { border-color: var(--n-300); }
+.lib-card:active { transform: scale(.98); }
+.lib-card[aria-pressed="true"] {
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 2px var(--brand-200);
+}
+
+.lib-thumb {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  /* Chiaro finche' non c'e' un video: venticinque quadrati neri in colonna
+     pesavano piu' dei nomi, che sono l'informazione. Il fondo scuro arriva
+     insieme al filmato, dove serve davvero a farlo risaltare. */
+  background: var(--n-100);
+}
+.lib-thumb video {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  display: block;
+  opacity: 0;
+  background: var(--stage-900);
+  transition: opacity var(--dur) var(--ease);
+}
+.lib-card.is-playing .lib-thumb video { opacity: 1; }
+/* Il video parte solo all'hover: fino ad allora la card mostra questo, e
+   nessuno dei 25 mp4 viene scaricato. */
+.lib-thumb .thumb-idle {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--stage-fg-dim);
+}
+.lib-thumb .thumb-idle .icon { width: 26px; height: 26px; }
+.lib-card.is-playing .thumb-idle { display: none; }
+
+.lib-name {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 8px 10px;
+  font-size: var(--t-sm);
+  font-weight: 700;
+  color: var(--text);
+}
+.lib-badge { flex: none; display: grid; place-items: center; }
+.lib-badge .icon { width: 15px; height: 15px; }
+.lib-card[data-status="known"]  .lib-badge { color: var(--ok-600); }
+.lib-card[data-status="review"] .lib-badge { color: var(--warn-600); }
+
+/* Si incontra subito dopo un reset: va progettato, non lasciato bianco. */
+.lib-empty {
+  padding: var(--s-8) var(--s-5);
+  text-align: center;
+  color: var(--text-mute);
+  font-size: var(--t-sm);
+  line-height: 1.65;
+}
+.lib-empty .icon { width: 34px; height: 34px; color: var(--n-300); margin-bottom: var(--s-3); }
+.lib-empty strong { display: block; color: var(--text-soft); margin-bottom: 6px; }
+
+/* Contatore sul pulsante della barra */
+.chip-count {
+  min-width: 21px; height: 21px;
+  padding: 0 6px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--r-pill);
+  background: var(--n-200);
+  color: var(--text-soft);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.chip-btn[aria-expanded="true"] {
+  background: var(--brand-700);
+  border-color: var(--brand-700);
+  color: var(--n-0);
+}
+.chip-btn[aria-expanded="true"] .chip-count { background: rgba(255, 255, 255, .24); color: var(--n-0); }
+
+/* Il chip "quiet" resta sottotono anche da aperto: e' uno strumento, e il
+   teal e' riservato alle funzioni della pratica. */
+.chip-btn.quiet[aria-expanded="true"] {
+  background: var(--n-800);
+  border-color: var(--n-800);
+  color: var(--n-0);
+}
 
 
 /* ============ 10. RESPONSIVE E PREFERENZE DI MOVIMENTO =================== */
@@ -1313,14 +1617,56 @@ button { font: inherit; color: inherit; }
   .you-col  { order: 1; }
   .demo-col { order: 2; }
 
-  .cam-card { height: auto; width: 100%; }
+  /* Impilate, le card lasciano decidere l'altezza alla larghezza. Serve pero'
+     aspect-ratio: dentro la card della webcam ogni figlio e' in posizione
+     assoluta, quindi con height:auto e nulla nel flusso normale la card
+     collassava a zero e il video spariva. */
+  .cam-card {
+    height: auto;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+  }
   .demo-card {
     height: auto;
     width: min(260px, 62vw);
+    aspect-ratio: 1 / 1;
     margin-inline: auto;
   }
 
   .step-name { display: none; }   /* nella barra stretta non ci sta */
+}
+
+/* Sotto questa larghezza restringere il palco renderebbe la webcam inutile:
+   la libreria torna a sovrapporsi, e il palco resta della sua misura. */
+@media (max-width: 1100px) {
+  .free-screen.lib-open { --lib-w: 0px; }
+
+  .library {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: min(var(--lib-open-w), 92vw);
+    border-radius: var(--r-card) 0 0 var(--r-card);
+    box-shadow: var(--sh-3);
+    opacity: 1;
+    transform: translateX(101%);
+    transition: transform var(--dur-slow) var(--ease);
+    z-index: 40;
+  }
+  .free-screen:not(.lib-open) .library { border-width: 1px; }
+  .free-screen.lib-open .library { transform: translateX(0); }
+  .lib-head, .lib-filters, .lib-body { width: auto; }
+}
+
+@media (max-width: 900px) {
+  /* Impilate, le due card chiedono piu' della finestra: qui la pagina deve
+     tornare a poter crescere, ed e' giusto che scorra. */
+  .free-screen { padding: var(--s-4) var(--s-4) var(--s-6); height: auto; }
+
+  .free-stage { flex-direction: column; align-items: center; gap: var(--s-4); }
+  .free-stage .stage-col { width: 100%; max-width: 560px; }
+  .free-title p { display: none; }
+
+  .result { width: 100%; }
 }
 
 @media (max-width: 800px) {
@@ -1353,4 +1699,5 @@ button { font: inherit; color: inherit; }
   .cam-card[data-state="correct"] .cam-verdict,
   .cam-card[data-state="wrong"] .cam-verdict { animation: none; opacity: 1; }
   .fb-timer.run { animation: none; transform: scaleX(0); }
+  .library { transition: none; }
 }

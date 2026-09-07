@@ -2,12 +2,13 @@
 //
 // Punto d'ingresso: decide quale schermata mostrare e la tiene in vita.
 //
-//   ?lesson=<id>  -> schermata lezione   (LessonView, ridisegnata)
-//   ?mode=free    -> Free Training       (schermata di prova, in attesa del suo turno)
+//   ?lesson=<id>  -> schermata lezione   (LessonView)
+//   ?mode=free    -> Free Training       (FreeView)
 //   nessuno       -> menu
 
-import { SignSession } from './session.js';
 import { LessonView } from './lesson.js';
+import { FreeView } from './free.js';
+import { Progress } from './progress.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -16,72 +17,59 @@ const lecturesScreen = $('lectures-screen');
 const appScreen = $('app-screen');
 
 let lessonView = null;
+let freeView = null;
 
 const show = (el) => el.classList.remove('hidden');
 const hide = (el) => el.classList.add('hidden');
 
 
-/* ============================== Free Training ==============================
-   Non ridisegnato in questo passaggio: stessa interfaccia di prima, ma la
-   camera e il socket passano ora da SignSession, condiviso con la lezione. */
+/* ======================= Pannello debug del menu ==========================
+   Unico posto da cui si azzera la memoria dei progressi. I listener si
+   agganciano una volta sola al caricamento della pagina, quindi qui non serve
+   l'AbortController che governa lezione e free training. */
 
-const free = {
-  session: null,
-  cameraFailed: false,
-
-  start() {
-    if (this.session && this.session.isRunning) return;
-    this.cameraFailed = false;
-
-    this.session = new SignSession({
-      lesson: null,
-      video: $('free-webcam'),
-      canvas: $('free-overlay'),
-      // Il socket si apre prima che la camera risponda: se il permesso e' stato
-      // negato, "Connected" non deve cancellare l'avviso.
-      onOpen: () => {
-        if (this.cameraFailed) return;
-        $('message').value = 'Connected to sign model.';
-      },
-      onStatus: (m) => {
-        $('capture-dot').classList.toggle('active', m.capturing);
-        const movement = typeof m.movement === 'number' ? m.movement.toFixed(2) : '--';
-        $('capture-text').textContent = `${m.capturing ? 'Capturing' : 'Not Capturing'} · ${movement}`;
-        if (m.discarded) {
-          $('message').value = m.discarded === 'mani_non_visibili'
-            ? 'Hands not visible, capture discarded'
-            : 'Capture too short, discarded';
-        }
-      },
-      onRecognition: (m) => {
-        $('message').value = `Detected sign: ${m.gloss} (conf: ${(m.confidence * 100).toFixed(0)}%)`;
-      },
-      onClose: () => { $('message').value = 'Disconnected from model server.'; },
-      onError: (kind) => {
-        if (kind === 'socket') return;
-        this.cameraFailed = true;
-        $('message').value = kind === 'denied'
-          ? 'Camera permission denied — allow access and press Start again.'
-          : 'Error: could not access webcam.';
-      },
-    });
-
-    this.session.start();
-    $('message').value = 'Camera active. Sending frames to model...';
-    $('start-btn').textContent = 'Stop Camera';
-  },
-
-  stop() {
-    if (this.session) { this.session.stop(); this.session = null; }
-    $('message').value = '';
-    $('capture-text').textContent = 'Not Capturing';
-    $('capture-dot').classList.remove('active');
-    $('start-btn').textContent = 'Start Camera';
+const menuDebug = {
+  init() {
+    $('menu-debug-toggle').addEventListener('click', () => this.toggle());
+    $('menu-reset').addEventListener('click', () => this.confirm(true));
+    $('menu-reset-no').addEventListener('click', () => this.confirm(false));
+    $('menu-reset-yes').addEventListener('click', () => this.doReset());
   },
 
   toggle() {
-    if (this.session && this.session.isRunning) this.stop();
-    else this.start();
+    const btn = $('menu-debug-toggle');
+    const open = btn.getAttribute('aria-expanded') !== 'true';
+    btn.setAttribute('aria-expanded', String(open));
+    $('menu-debug-panel').hidden = !open;
+    this.confirm(false);
+    if (open) this.refresh();
+  },
+
+  /** Conferma in due passi: il reset cancella tutto e non si torna indietro. */
+  confirm(asking) {
+    $('menu-reset-wrap').hidden = asking;
+    $('menu-reset-confirm').hidden = !asking;
+  },
+
+  async refresh() {
+    const data = await Progress.load();
+    const line = $('menu-progress-line');
+
+    if (!data) {
+      line.textContent = 'Progress unavailable — is the server running?';
+      return;
+    }
+
+    const s = data.summary;
+    line.innerHTML =
+      `<b>${s.lessons_completed}</b> of ${s.lessons_total} lessons completed<br>` +
+      `<b>${s.known}</b> signs known · <b>${s.review}</b> to review`;
+  },
+
+  async doReset() {
+    await Progress.reset();
+    this.confirm(false);
+    this.refresh();
   },
 };
 
@@ -110,12 +98,13 @@ function leaveLesson() {
 function goToFree() {
   hide(menuScreen);
   hide(lecturesScreen);
-  show(appScreen);
+
+  freeView = new FreeView({ onExit: leaveFree });
+  freeView.mount();
 }
 
 function leaveFree() {
-  free.stop();
-  hide(appScreen);
+  if (freeView) { freeView.unmount(); freeView = null; }
 
   const url = new URL(location);
   url.searchParams.delete('mode');
@@ -132,14 +121,21 @@ function init() {
   const lesson = params.get('lesson');
   const mode = params.get('mode');
 
-  // Menu e selezione lezione: comportamento invariato
   $('lessons-btn').addEventListener('click', () => { hide(menuScreen); show(lecturesScreen); });
   $('lectures-back-btn').addEventListener('click', () => { hide(lecturesScreen); show(menuScreen); });
-  $('free-btn').addEventListener('click', () => { location.search = 'mode=free'; });
+
+  // Come le lezioni: niente ricarica della pagina. Prima faceva
+  // location.search = 'mode=free', che ricaricava tutto — modello di
+  // navigazione diverso dal resto dell'app senza motivo.
+  $('free-btn').addEventListener('click', () => {
+    const url = new URL(location);
+    url.searchParams.set('mode', 'free');
+    history.pushState({}, '', url);
+    goToFree();
+  });
 
   document.querySelectorAll('.lecture-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
-      // Niente ricarica: la lezione e' una schermata, non una pagina.
       const id = btn.dataset.lesson;
       const url = new URL(location);
       url.searchParams.set('lesson', id);
@@ -148,8 +144,7 @@ function init() {
     });
   });
 
-  $('start-btn').addEventListener('click', () => free.toggle());
-  $('back-btn').addEventListener('click', leaveFree);
+  menuDebug.init();
 
   if (lesson) {
     goToLesson(lesson);

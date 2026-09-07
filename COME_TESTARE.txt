@@ -19,9 +19,10 @@ DuoSL - come avviare il test in standalone
    http://localhost:8000/
    Dal menu iniziale scegli "Lessons" oppure "Free Training".
 
-   In LEZIONE la camera parte da sola: il browser chiede il permesso appena
-   entri. In FREE TRAINING resta il pulsante "Start Camera".
-   URL diretto di una lezione: http://localhost:8000/?lesson=<nome_file_senza_json>
+   In LEZIONE e in FREE TRAINING la camera parte da sola: il browser chiede
+   il permesso appena entri.
+   URL diretti: http://localhost:8000/?lesson=<nome_file_senza_json>
+                http://localhost:8000/?mode=free
 
 4) COME FUNZIONA IL RICONOSCIMENTO
    Il modello NON viene interrogato ad ogni frame: accumula i frame mentre ti
@@ -55,7 +56,7 @@ DuoSL - come avviare il test in standalone
    usata la voce predefinita (in italiano): pronuncia comunque i nomi dei segni.
    L'icona dell'altoparlante accanto alla parola la ripete su richiesta, anche
    a dettatura spenta.
-   "Debug" accanto apre la diagnostica descritta al punto 6: serve a tarare le
+   "Debug" accanto apre la diagnostica descritta al punto 8: serve a tarare le
    soglie, non alla lezione.
 
    Se cade la connessione, "Reconnect" riprende dallo step in cui eri: non
@@ -66,7 +67,62 @@ DuoSL - come avviare il test in standalone
      R       rivedi la demo al rallentatore   D  pannello diagnostica
      S       salta lo step (quando offerto)   Esc  esci dalla lezione
 
-6) TARARE LA SENSIBILITA'
+6) LA SCHERMATA DI FREE TRAINING
+   Nessun copione: fai un segno qualunque e la schermata ti dice cosa ha letto.
+   Stessa lingua visiva della lezione, ma l'informazione arriva DOPO il gesto
+   invece che prima, quindi il box del segno sta SOTTO la webcam.
+
+   Il box mostra la parola in grande e, piccola sotto, la "confidence".
+   E' scritto confidence e non accuratezza di proposito: e' il softmax del
+   classificatore, non e' calibrato e resta sopra il 90% anche quando sbaglia.
+   Se il modello restituisce un indice senza voce nel vocabolario, il box dice
+   "Not recognised" invece di mostrare la stringa UNKNOWN.
+
+   LIBRERIA DEI SEGNI ("Library" in alto a destra, o il tasto L)
+   Un pannello laterale coi segni che hai gia' incontrato nelle lezioni, divisi
+   in "Known" (riusciti) e "To review" (saltati), con un filtro in testa.
+   Non copre la pagina: la restringe, perche' durante la pratica la webcam non
+   deve mai sparire. Sotto i 1100px di larghezza torna a sovrapporsi, perche'
+   li' restringere renderebbe la webcam inutilizzabile.
+
+   Passando col mouse su una card il video parte da solo. I filmati vengono
+   scaricati SOLO in quel momento: i 25 demo pesano ~19 MB e caricarli tutti
+   all'apertura del pannello sarebbe uno spreco.
+
+   Cliccando una card il segno si "appunta" accanto alla webcam, esattamente
+   come la demo nelle lezioni, con pausa / 0.5x / specchia. Un secondo click
+   sulla card, o la X sulla demo, lo stacca e lo spazio torna alla webcam.
+
+   Scorciatoie: L libreria   V dettatura   Spazio pausa demo   Esc esci
+   (Esc chiude prima la libreria, poi esce dalla schermata)
+
+7) LA MEMORIA DEI PROGRESSI
+   Il server tiene un unico file, data/progress.json (creato al primo uso e
+   ignorato da git), con le lezioni completate e, per ogni segno, se e' noto o
+   da rivedere. E' cio' che riempie la libreria.
+
+   Un segno diventa "known" appena lo indovini in lezione, "to review" se lo
+   salti. Lo stato si PROMUOVE e non retrocede mai: se un giorno salti un segno
+   che gia' conoscevi, resta conosciuto. Sarebbe ingiusto il contrario, visto
+   che a sbagliare e' spesso il riconoscitore.
+
+   Il salvataggio e' per singolo passo, non a fine lezione: se esci a meta',
+   i segni che hai gia' fatto restano.
+
+   PER AZZERARE: nel menu iniziale, pulsante "Debug" -> mostra i conteggi
+   attuali (sono la prova che il reset ha funzionato) e "Reset progress", con
+   una conferma in due passi.
+
+   Se il file viene corrotto o cancellato, il server riparte da una memoria
+   vuota senza errori, e la prima scrittura successiva lo ricrea.
+
+   Rotte, se ti serve controllarle a mano:
+     GET  /api/progress               stato completo + conteggi
+     POST /api/progress/sign          {gloss, status: known|review, lesson}
+     POST /api/progress/lesson        {lesson, done, total}
+     POST /api/progress/reset
+
+8) TARARE LA SENSIBILITA'
    Premi D (o l'icona dei cursori in alto a destra) per aprire la diagnostica:
    mostra il movimento in tempo reale come barra, con le DUE SOGLIE disegnate
    sopra, piu' stato, ultima predizione, confidenza e motivo dello scarto.
@@ -81,7 +137,7 @@ DuoSL - come avviare il test in standalone
    Guarda dove arriva la barra stando fermo e facendo un segno, regola le due
    soglie di conseguenza, poi RIAVVIA il server (il pannello le rilegge da li').
 
-7) CREARE UNA NUOVA LEZIONE
+9) CREARE UNA NUOVA LEZIONE
    Copia lectures/lesson1.json, cambia:
      "id":       deve combaciare col nome del file (senza .json)
      "steps":    lista di segni; "gloss" deve esistere in
@@ -91,7 +147,7 @@ DuoSL - come avviare il test in standalone
                  che viene pronunciato dalla dettatura vocale.
      "demo_url": video della demo, servito da lectures/demos/
 
-8) I VIDEO DELLE DEMO
+10) I VIDEO DELLE DEMO
    Vanno in lectures/demos/ e sono referenziati come /demos/<nome>.mp4
    Formato: MP4 H.264. Le proporzioni possono essere qualsiasi (il pannello e'
    quadrato e adatta il video senza tagliarlo). Per alleggerire un sorgente:
@@ -102,7 +158,7 @@ DuoSL - come avviare il test in standalone
    Servono video e non GIF perche' una GIF nel browser non si puo' ne' mettere
    in pausa ne' rallentare: non esiste API per farlo.
 
-9) FERMARE IL SERVER
+11) FERMARE IL SERVER
    Ctrl+C nel terminale dove gira uvicorn.
 
 NOTA: non serve nessuna API key ne' file .env - il server non usa servizi esterni.
