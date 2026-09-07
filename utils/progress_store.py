@@ -16,7 +16,9 @@
 
 import json
 import os
+import re
 import glob
+import random
 from datetime import datetime, timezone
 
 VERSION = 1
@@ -33,6 +35,24 @@ def empty():
     return {"version": VERSION, "updated_at": None, "lessons": {}, "signs": {}}
 
 
+def _natural_key(path):
+    """
+    lesson2 prima di lesson10.
+
+    L'ordine dei file decide l'ordine del percorso e quindi quale lezione
+    sblocca quale: con l'ordinamento alfabetico semplice, alla decima lezione
+    il percorso si sarebbe silenziosamente riordinato.
+    """
+    name = os.path.basename(path)
+    return [int(part) if part.isdigit() else part.lower()
+            for part in re.split(r"(\d+)", name)]
+
+
+def _short_title(name):
+    """"Lesson 3 - Interactions" -> "Interactions": e' cio' che sta sopra al nodo."""
+    return name.split(" - ", 1)[1].strip() if " - " in name else name
+
+
 def build_catalog(lectures_dir):
     """
     gloss -> {display, demo_url, lessons: [...]} leggendo le lezioni.
@@ -43,7 +63,7 @@ def build_catalog(lectures_dir):
     signs = {}
     lessons = {}
 
-    for path in sorted(glob.glob(os.path.join(lectures_dir, "*.json"))):
+    for path in sorted(glob.glob(os.path.join(lectures_dir, "*.json")), key=_natural_key):
         try:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -53,7 +73,15 @@ def build_catalog(lectures_dir):
 
         lesson_id = data.get("id") or os.path.splitext(os.path.basename(path))[0]
         steps = data.get("steps") or []
-        lessons[lesson_id] = {"name": data.get("name", lesson_id), "total": len(steps)}
+        name = data.get("name", lesson_id)
+        lessons[lesson_id] = {
+            "name": name,
+            # Titolo e icona stanno nel file della lezione, non nel client:
+            # aggiungere una lezione non deve richiedere di toccare il JS.
+            "title": data.get("title") or _short_title(name),
+            "icon": data.get("icon") or "wave",
+            "total": len(steps),
+        }
 
         for step in steps:
             gloss = step.get("gloss")
@@ -185,6 +213,48 @@ class ProgressStore:
     def reset(self):
         return self._save(empty())
 
+    def fill_demo(self, catalog, review_ratio=0.25):
+        """
+        Riempie la memoria come se tutte le lezioni fossero state fatte.
+
+        Serve a provare free practice e libreria senza doverle rifare ogni
+        volta a mano davanti alla webcam. I segni vengono divisi a caso fra
+        riusciti e da rivedere, perche' con tutto "conosciuto" la libreria
+        mostrerebbe una sezione sola e meta' della schermata resterebbe non
+        provata.
+
+        Sovrascrive: e' un comando da pannello debug, non un'aggiunta.
+        """
+        data = empty()
+        now = _now()
+
+        review = set()
+        for gloss in catalog["signs"]:
+            status = REVIEW if random.random() < review_ratio else KNOWN
+            if status == REVIEW:
+                review.add(gloss)
+            data["signs"][gloss] = {
+                "status": status,
+                "correct": 0 if status == REVIEW else random.randint(1, 3),
+                "skipped": random.randint(1, 2) if status == REVIEW else 0,
+                "first_at": now,
+                "last_at": now,
+                "lessons": list(catalog["signs"][gloss]["lessons"]),
+            }
+
+        for lesson_id, meta in catalog["lessons"].items():
+            # best_done coerente con i segni: quelli finiti fra i "da rivedere"
+            # sono esattamente quelli che in quella lezione non sono riusciti.
+            missed = sum(1 for g in review if lesson_id in catalog["signs"][g]["lessons"])
+            data["lessons"][lesson_id] = {
+                "completions": 1,
+                "best_done": max(0, meta["total"] - missed),
+                "total": meta["total"],
+                "last_at": now,
+            }
+
+        return self._save(data)
+
     # ----------------------------------------------------------------- lettura
 
     def view(self, catalog):
@@ -221,6 +291,8 @@ class ProgressStore:
             lessons.append({
                 "id": lesson_id,
                 "name": meta["name"],
+                "title": meta["title"],
+                "icon": meta["icon"],
                 "total": meta["total"],
                 "completions": int(record.get("completions", 0)),
                 "best_done": int(record.get("best_done", 0)),

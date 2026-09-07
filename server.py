@@ -265,6 +265,14 @@ async def api_progress_reset():
         return progress.view(catalog)
 
 
+@app.post("/api/progress/demo")
+async def api_progress_demo():
+    """Memoria piena, per provare libreria e free practice senza rifare tutto."""
+    async with progress_lock:
+        progress.fill_demo(catalog)
+        return progress.view(catalog)
+
+
 def lesson_payload(result):
     """Messaggio lezione. target_* = cosa fare ADESSO, attempted_* = cosa era richiesto nel tentativo."""
     return {

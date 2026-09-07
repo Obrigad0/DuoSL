@@ -17,9 +17,9 @@ DuoSL - come avviare il test in standalone
 
 3) APRI NEL BROWSER (serve una webcam vera, non funziona in browser sandbox/headless)
    http://localhost:8000/
-   Dal menu iniziale scegli "Lessons" oppure "Free Training".
+   Dal menu iniziale scegli "Lessons" oppure "Free Practice".
 
-   In LEZIONE e in FREE TRAINING la camera parte da sola: il browser chiede
+   In LEZIONE e in FREE PRACTICE la camera parte da sola: il browser chiede
    il permesso appena entri.
    URL diretti: http://localhost:8000/?lesson=<nome_file_senza_json>
                 http://localhost:8000/?mode=free
@@ -29,7 +29,61 @@ DuoSL - come avviare il test in standalone
    muovi e classifica UNA volta sola quando ti fermi, sul gesto completo.
    Quindi il verdetto arriva quando finisci il segno, non mentre lo stai facendo.
 
-5) LA SCHERMATA DI LEZIONE
+5) IL PERCORSO DELLE LEZIONI
+   Dal menu, "Lessons". Le lezioni non sono una lista ma un percorso: hanno un
+   ordine e si aprono l'una con l'altra.
+
+   Ogni nodo dice una cosa sola, su un canale suo, cosi' non si confondono:
+     spunta verde       -> lezione gia' completata
+     alone ambra        -> e' la prossima da fare (al massimo una alla volta)
+     lucchetto grigio   -> ancora chiusa; anche il tratteggio che ci porta e'
+                           grigio, cosi' si vede fin dove si puo' arrivare
+     cerchio punteggiato-> lezione che in questa demo non esiste: ce ne sono
+                           due (5 e 6), sbiadite, e dopo l'ultima la strada
+                           prosegue e si perde in una sfumatura. Non si aprono
+                           in nessun modo e non dicono niente: il disegno
+                           basta. Sono due e non tre perche' con tre il
+                           percorso non entrava piu' in una schermata sola
+   Sopra al nodo aperto c'e' il nome del tema, sotto il numero della lezione.
+   Il nome delle lezioni chiuse resta nascosto (si legge passandoci sopra col
+   mouse, e gli screen reader lo annunciano comunque).
+
+   REGOLA DI SBLOCCO: una lezione si apre quando la precedente e' stata
+   COMPLETATA almeno una volta. La prima e' sempre aperta.
+
+   LA BARCA appoggiata sul nodo e' la lezione scelta. Si sposta con un salto
+   quando ne scegli un'altra, e quando premi "Start" entra dentro il cerchio
+   prima che parta la lezione. Il nome del tema sta basso, vicino al cerchio,
+   e si alza solo sul nodo dove la barca e' attraccata, per farle posto.
+   Cliccando una lezione chiusa non succede niente di brutto: l'anello fa un
+   lampeggio grigio e sotto compare "Finish X to unlock this lesson".
+
+   FREE PRACTICE e' la palla staccata a sinistra, con il faro dietro: non fa
+   parte del percorso ed e' sempre disponibile. Si riconosce dal faro, dal
+   fatto che non ha un numero, e perche' e' l'unico punto della schermata che
+   si muove da solo (l'alone attorno alla palla e' la luce del faro e respira
+   lentamente).
+
+   Barca e faro sono due file SVG a se' stanti, static/boat.svg e
+   static/lighthouse.svg, caricati con <img>: non stanno nello sprite delle
+   icone perche' hanno colori propri e non devono seguire currentColor.
+
+   DIMENSIONI: la scala del percorso non e' fissa. lessons.js guarda quanta
+   ALTEZZA c'e' e sceglie di conseguenza, poi scrive tutto in una sola
+   variabile CSS (--disc) da cui discendono dischi, icone, testi, anelli e
+   tratteggio. Su un monitor alto i cerchi crescono, su una finestra bassa
+   rimpiccioliscono: in verticale non si taglia e non si scorre mai nulla.
+   In LARGHEZZA invece il percorso esce dallo schermo ed e' voluto - e' un
+   percorso, si scorre - ma a scorrere e' solo la sua corsia, mai la pagina.
+
+   Scorciatoie: frecce sinistra/destra per spostarsi fra i nodi disponibili,
+   Esc per tornare al menu.
+
+   Finita una lezione si torna qui e la schermata si ricarica da sola: se hai
+   appena sbloccato quella dopo, la vedi aprirsi. Se la lezione che avevi
+   scelto era proprio quella da fare, la scelta avanza da sola a quella nuova.
+
+6) LA SCHERMATA DI LEZIONE
    In alto e al centro, in grande, il SEGNO DA FARE: e' l'informazione piu'
    importante e sta dove si trova subito.
    Sotto: a destra la tua webcam (l'elemento piu' grande, sei tu il centro
@@ -56,7 +110,7 @@ DuoSL - come avviare il test in standalone
    usata la voce predefinita (in italiano): pronuncia comunque i nomi dei segni.
    L'icona dell'altoparlante accanto alla parola la ripete su richiesta, anche
    a dettatura spenta.
-   "Debug" accanto apre la diagnostica descritta al punto 8: serve a tarare le
+   "Debug" accanto apre la diagnostica descritta al punto 9: serve a tarare le
    soglie, non alla lezione.
 
    Se cade la connessione, "Reconnect" riprende dallo step in cui eri: non
@@ -67,7 +121,7 @@ DuoSL - come avviare il test in standalone
      R       rivedi la demo al rallentatore   D  pannello diagnostica
      S       salta lo step (quando offerto)   Esc  esci dalla lezione
 
-6) LA SCHERMATA DI FREE TRAINING
+7) LA SCHERMATA DI FREE PRACTICE
    Nessun copione: fai un segno qualunque e la schermata ti dice cosa ha letto.
    Stessa lingua visiva della lezione, ma l'informazione arriva DOPO il gesto
    invece che prima, quindi il box del segno sta SOTTO la webcam.
@@ -96,7 +150,7 @@ DuoSL - come avviare il test in standalone
    Scorciatoie: L libreria   V dettatura   Spazio pausa demo   Esc esci
    (Esc chiude prima la libreria, poi esce dalla schermata)
 
-7) LA MEMORIA DEI PROGRESSI
+8) LA MEMORIA DEI PROGRESSI
    Il server tiene un unico file, data/progress.json (creato al primo uso e
    ignorato da git), con le lezioni completate e, per ogni segno, se e' noto o
    da rivedere. E' cio' che riempie la libreria.
@@ -109,9 +163,19 @@ DuoSL - come avviare il test in standalone
    Il salvataggio e' per singolo passo, non a fine lezione: se esci a meta',
    i segni che hai gia' fatto restano.
 
-   PER AZZERARE: nel menu iniziale, pulsante "Debug" -> mostra i conteggi
-   attuali (sono la prova che il reset ha funzionato) e "Reset progress", con
-   una conferma in due passi.
+   IL PANNELLO DEBUG: nel menu iniziale, pulsante "Debug". Mostra i conteggi
+   attuali (sono la prova che i due comandi hanno funzionato) e due azioni,
+   entrambe con conferma in due passi perche' entrambe sovrascrivono:
+
+     Fill progress  -> segna tutte e quattro le lezioni come fatte e divide i
+                       25 segni A CASO fra conosciuti e da rivedere. Serve a
+                       provare libreria e free practice senza doversi rifare
+                       ogni lezione davanti alla webcam. La divisione e'
+                       casuale di proposito: con tutto "conosciuto" la
+                       libreria mostrerebbe una sezione sola e meta' della
+                       schermata resterebbe non provata. Anche i best_done
+                       delle lezioni sono coerenti coi segni mancati.
+     Reset progress -> cancella tutto.
 
    Se il file viene corrotto o cancellato, il server riparte da una memoria
    vuota senza errori, e la prima scrittura successiva lo ricrea.
@@ -120,9 +184,10 @@ DuoSL - come avviare il test in standalone
      GET  /api/progress               stato completo + conteggi
      POST /api/progress/sign          {gloss, status: known|review, lesson}
      POST /api/progress/lesson        {lesson, done, total}
+     POST /api/progress/demo          memoria piena (il "Fill progress")
      POST /api/progress/reset
 
-8) TARARE LA SENSIBILITA'
+9) TARARE LA SENSIBILITA'
    Premi D (o l'icona dei cursori in alto a destra) per aprire la diagnostica:
    mostra il movimento in tempo reale come barra, con le DUE SOGLIE disegnate
    sopra, piu' stato, ultima predizione, confidenza e motivo dello scarto.
@@ -137,17 +202,24 @@ DuoSL - come avviare il test in standalone
    Guarda dove arriva la barra stando fermo e facendo un segno, regola le due
    soglie di conseguenza, poi RIAVVIA il server (il pannello le rilegge da li').
 
-9) CREARE UNA NUOVA LEZIONE
+10) CREARE UNA NUOVA LEZIONE
    Copia lectures/lesson1.json, cambia:
      "id":       deve combaciare col nome del file (senza .json)
+                 L'ORDINE dei file decide l'ordine del percorso e quindi chi
+                 sblocca chi: lesson2 viene prima di lesson10, non dopo.
      "steps":    lista di segni; "gloss" deve esistere in
                  models/index_to_gloss_200.json (~209 segni in inglese)
+     "title":    facoltativo, il nome corto sopra al nodo nel percorso
+                 (se manca si ricava da "name": "Lesson 3 - Interactions"
+                 diventa "Interactions")
+     "icon":     facoltativo, il tema del nodo: wave | people | chat | heart
+                 (se manca si usa wave)
      "display_text": facoltativo, come mostrare il gloss all'utente
                  (es. gloss "HOW1" -> display_text "HOW"). E' anche il testo
                  che viene pronunciato dalla dettatura vocale.
      "demo_url": video della demo, servito da lectures/demos/
 
-10) I VIDEO DELLE DEMO
+11) I VIDEO DELLE DEMO
    Vanno in lectures/demos/ e sono referenziati come /demos/<nome>.mp4
    Formato: MP4 H.264. Le proporzioni possono essere qualsiasi (il pannello e'
    quadrato e adatta il video senza tagliarlo). Per alleggerire un sorgente:
@@ -158,7 +230,7 @@ DuoSL - come avviare il test in standalone
    Servono video e non GIF perche' una GIF nel browser non si puo' ne' mettere
    in pausa ne' rallentare: non esiste API per farlo.
 
-11) FERMARE IL SERVER
+12) FERMARE IL SERVER
    Ctrl+C nel terminale dove gira uvicorn.
 
 NOTA: non serve nessuna API key ne' file .env - il server non usa servizi esterni.

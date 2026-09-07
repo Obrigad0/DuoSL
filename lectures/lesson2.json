@@ -1,6 +1,8 @@
 {
   "id": "lesson2",
   "name": "Lesson 2 - People and Identity",
+  "title": "People",
+  "icon": "people",
   "steps": [
     { "gloss": "ME", "demo_url": "/demos/me.mp4"},
     { "gloss": "HEARING", "demo_url": "/demos/hearing.mp4" },

@@ -1,6 +1,8 @@
 {
   "id": "lesson3",
   "name": "Lesson 3 - Interactions",
+  "title": "Interactions",
+  "icon": "chat",
   "steps": [
     { "gloss": "PLEASE", "demo_url": "/demos/please.mp4"},
     { "gloss": "AGAIN", "demo_url": "/demos/again.mp4" },

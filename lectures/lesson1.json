@@ -1,6 +1,8 @@
 {
   "id": "lesson1",
   "name": "Lesson 1 - Introduction",
+  "title": "Introduction",
+  "icon": "wave",
   "steps": [
     { "gloss": "HELLO", "demo_url": "/demos/hello.mp4"},
     { "gloss": "HOW1", "display_text": "HOW", "demo_url": "/demos/how.mp4" },

@@ -1,6 +1,8 @@
 {
   "id": "lesson4",
   "name": "Lesson 4 - Feelings",
+  "title": "Feelings",
+  "icon": "heart",
   "steps": [
     { "gloss": "HOW1", "display_text": "HOW", "demo_url": "/demos/how.mp4"},
     { "gloss": "YOU", "demo_url": "/demos/you.mp4" },

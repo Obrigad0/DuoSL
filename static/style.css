@@ -4,7 +4,7 @@
    1. Token          6. Schermata lezione — barra e progresso
    2. Base e reset   7. Schermata lezione — palco (demo + webcam)
    3. Utility        8. Schermata lezione — feedback e diagnostica
-   4. Bottoni        9. Menu, debug, Free Training e libreria dei segni
+   4. Bottoni        9. Menu, debug, percorso lezioni, Free Practice, libreria
    5. Schermate     10. Responsive e preferenze di movimento
    ========================================================================== */
 
@@ -1129,7 +1129,7 @@ button { font: inherit; color: inherit; }
 }
 
 
-/* ========== 9. MENU, FREE TRAINING E LIBRERIA DEI SEGNI ================== */
+/* ========== 9. MENU, FREE PRACTICE E LIBRERIA DEI SEGNI ================== */
 
 .menu-page .app-container {
   max-width: min(1400px, 92vw);
@@ -1232,12 +1232,430 @@ button { font: inherit; color: inherit; }
 .dbg-confirm p { font-size: var(--t-sm); color: var(--text); margin-bottom: var(--s-3); line-height: 1.5; }
 .dbg-confirm-actions { display: flex; flex-direction: column; gap: var(--s-2); }
 
+.dbg-actions { display: flex; flex-direction: column; gap: var(--s-2); }
+
+/* .btn.subtle nasce per stare su fondi gia' colorati: e' un velo scuro con
+   testo bianco. Qui il pannello e' bianco, e cosi' com'e' diventava testo
+   chiaro su fondo chiaro. Nel pannello prende un contorno in tinta. */
+.menu-debug-panel .btn.subtle {
+  background: var(--surface);
+  border: 1px solid var(--brand-300);
+  color: var(--brand-800);
+}
+.menu-debug-panel .btn.subtle:hover { background: var(--brand-100); }
+.dbg-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+}
+.dbg-actions .btn .icon { width: 16px; height: 16px; }
+
 .btn.danger { background: #b42318; color: var(--n-0); }
 .btn.danger:hover { background: #912018; }
 .btn.danger .icon { width: 16px; height: 16px; }
 
 
-/* ======================= FREE TRAINING ==================================
+/* ============= SCELTA LEZIONE: IL PERCORSO ==============================
+   Un percorso invece di una lista. Le lezioni hanno un ordine e si sbloccano
+   l'una con l'altra: una fila di bottoni tutti uguali non lo diceva, e non
+   dava alcun senso di avanzamento fra una sessione e l'altra.
+
+   Quattro segnali distinti, ognuno su un canale suo, perche' non si
+   confondano fra loro:
+     dove sei stato   -> spunta verde sul nodo
+     dove devi andare -> alone ambra sul prossimo
+     cosa hai scelto  -> l'omino in piedi sul nodo
+     cosa non c'e'    -> cerchi tratteggiati che sfumano, in fondo al percorso
+
+   TUTTA la scala dipende da --disc, che imposta lessons.js in base allo
+   spazio disponibile: un solo numero governa dischi, icone, testi, anelli e
+   tratteggio, cosi' la pagina cresce sui monitor grandi e si stringe su
+   quelli piccoli restando in proporzione.
+*/
+
+.path-screen {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: var(--s-4);
+  height: 100vh;
+  min-height: 100vh;
+  padding: var(--s-5) var(--s-6) var(--s-6);
+  overflow-x: clip;
+
+  --disc: 118px;                        /* valore iniziale: poi lo scrive il JS */
+  --disc-r: calc(var(--disc) / 2);
+}
+
+.path-bar { display: flex; align-items: center; gap: var(--s-4); flex: none; }
+.path-title h1 { font-size: var(--t-xl); font-weight: 800; letter-spacing: -.02em; }
+.path-title p  { font-size: var(--t-sm); color: var(--text-mute); }
+
+/* Il percorso e' quasi sempre piu' largo della finestra — ci sono anche le
+   lezioni future — quindi scorre in orizzontale invece di stringersi. */
+.path-scroll {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+
+  /* Barra di scorrimento discreta e in tinta: quella di sistema tagliava in
+     due il disegno delle onde. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--brand-200) transparent;
+}
+.path-scroll::-webkit-scrollbar { height: 11px; }
+.path-scroll::-webkit-scrollbar-track { background: transparent; }
+.path-scroll::-webkit-scrollbar-thumb {
+  background: var(--brand-200);
+  background-clip: content-box;
+  border: 3px solid transparent;
+  border-radius: var(--r-pill);
+}
+.path-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-300);
+  background-clip: content-box;
+}
+
+.path-canvas {
+  position: relative;
+  flex: none;
+  margin-inline: auto;   /* centrato finche' ci sta tutto */
+}
+
+/* --- La linea tratteggiata --- */
+
+.path-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  overflow: visible;
+}
+.path-lines path {
+  fill: none;
+  stroke: var(--brand-200);
+  stroke-width: calc(var(--disc) * .076);
+  stroke-linecap: round;
+  stroke-dasharray: calc(var(--disc) * .185) calc(var(--disc) * .163);
+}
+/* Il tratto che porta a una lezione ancora chiusa e' grigio: il colore dice
+   fin dove si puo' arrivare, prima ancora di guardare i lucchetti. */
+.path-lines path.to-locked { stroke: var(--n-300); }
+/* Verso le lezioni future il tratteggio sbiadisce insieme a loro. */
+.path-lines path.to-soon { stroke: var(--n-200); }
+
+/* La strada oltre l'ultimo cerchio: il colore lo da' il gradiente costruito
+   in lessons.js, qui si dichiarano solo i due capi. Sfuma invece di
+   fermarsi netta, altrimenti sembrerebbe una linea tagliata male. */
+/* Lo stroke va dichiarato QUI e non come attributo sull'elemento: una
+   regola CSS batte sempre un attributo di presentazione, e .path-lines path
+   qui sopra avrebbe ridipinto la coda di teal pieno. */
+.path-lines path.path-tail { stroke: url(#path-tail-fade); }
+.path-lines .tail-start { stop-color: var(--n-300); stop-opacity: 1; }
+.path-lines .tail-end   { stop-color: var(--n-300); stop-opacity: 0; }
+
+/* --- I nodi --- */
+
+.path-node {
+  position: absolute;
+  left: 0; top: 0;
+  transform: translate(calc(var(--x) - 50%), calc(var(--y) - 50%));
+  width: var(--disc);
+  height: var(--disc);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.node-disc {
+  position: relative;
+  z-index: 1;
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--brand-800);
+  color: var(--n-0);
+  box-shadow: var(--sh-2);
+  transition: transform var(--dur) var(--ease-back),
+              background var(--dur) var(--ease),
+              box-shadow var(--dur) var(--ease);
+}
+.node-disc .icon {
+  width: calc(var(--disc) * .44);
+  height: calc(var(--disc) * .44);
+  stroke-width: 1.9;
+}
+
+.path-node:hover  .node-disc { transform: scale(1.06); }
+.path-node:active .node-disc { transform: scale(.97); }
+.path-node[aria-pressed="true"] .node-disc { transform: scale(1.08); box-shadow: var(--sh-3); }
+
+/* Il nome su una pastiglia chiara: sotto ci passa il disegno delle onde, e
+   il testo nudo ci si perdeva sopra.
+
+   Sta VICINO al disco, e si alza solo per fare posto alla barca quando
+   attracca. Tenerlo sempre alto lasciava un buco fra nome e cerchio su tutti
+   i nodi che la barca non stava toccando. */
+.node-name {
+  position: absolute;
+  bottom: calc(100% + var(--disc) * .17);
+  transition: bottom var(--dur-slow) var(--ease);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: calc(var(--disc) * .035) calc(var(--disc) * .105);
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, .88);
+  border: 1px solid var(--brand-100);
+  box-shadow: var(--sh-1);
+  font-size: calc(var(--disc) * .148);
+  font-weight: 800;
+  letter-spacing: -.01em;
+  color: var(--brand-900);
+}
+/* Il free practice ha il nome SOTTO, quindi la barca non gli sta mai fra i
+   piedi: escluso dal sollevamento. */
+.path-node[aria-pressed="true"]:not(.free-node) .node-name {
+  bottom: calc(100% + var(--disc) * .58);
+}
+
+.node-num {
+  position: absolute;
+  top: calc(100% + var(--disc) * .07);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: calc(var(--disc) * .185);
+  font-weight: 800;
+  color: var(--brand-800);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Stato: fatta / prossima / chiusa / in arrivo */
+
+.path-node[data-state="next"] .node-disc { background: var(--brand-600); }
+
+.path-node[data-state="locked"] { cursor: default; }
+.path-node[data-state="locked"] .node-disc { background: var(--n-300); box-shadow: var(--sh-1); }
+.path-node[data-state="locked"] .node-num  { color: var(--n-400); }
+.path-node[data-state="locked"]:hover .node-disc { transform: none; }
+
+/* Le lezioni che in questa demo non esistono ancora: cerchio vuoto e
+   tratteggiato, e via via piu' sbiadito. Dicono "il percorso continua"
+   senza fingere di essere una porta che si puo' aprire. */
+.path-node[data-state="soon"] { cursor: default; opacity: var(--fade, 1); }
+.path-node[data-state="soon"] .node-disc {
+  background: transparent;
+  border: 2px dashed var(--n-300);
+  color: var(--n-400);
+  box-shadow: none;
+}
+.path-node[data-state="soon"] .node-disc .icon { width: calc(var(--disc) * .30); height: calc(var(--disc) * .30); }
+.path-node[data-state="soon"] .node-num { color: var(--n-300); }
+.path-node[data-state="soon"]:hover .node-disc { transform: none; }
+
+/* Alone del prossimo: e' un anello STACCATO dal disco, non un bordo, cosi'
+   non cambia la dimensione del cerchio e si legge come un'indicazione
+   esterna invece che come un altro stato del nodo. */
+.node-ring {
+  position: absolute;
+  inset: calc(var(--disc) * -.095);
+  border-radius: 50%;
+  border: calc(var(--disc) * .042) solid var(--warn-400);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur) var(--ease);
+}
+.path-node[data-state="next"] .node-ring {
+  opacity: 1;
+  animation: next-pulse 2.6s var(--ease) infinite;
+}
+/* Bussare su un nodo che non si apre: l'anello lampeggia una volta, in
+   grigio. Niente scossoni: dire "non ancora" non deve mettere ansia. */
+.path-node.knock .node-ring {
+  opacity: 1;
+  border-color: var(--n-400);
+  animation: knock 620ms var(--ease);
+}
+
+.node-check {
+  position: absolute;
+  right: calc(var(--disc) * -.03); bottom: calc(var(--disc) * -.03);
+  z-index: 2;
+  width: calc(var(--disc) * .30);
+  height: calc(var(--disc) * .30);
+  border-radius: 50%;
+  background: var(--ok-600);
+  color: var(--n-0);
+  display: none;
+  place-items: center;
+  border: calc(var(--disc) * .032) solid var(--bg);
+}
+.node-check .icon {
+  width: calc(var(--disc) * .15);
+  height: calc(var(--disc) * .15);
+  stroke-width: 3.2;
+}
+.path-node[data-state="done"] .node-check { display: grid; }
+
+/* --- Free practice: fuori dal percorso, di proposito ---------------------
+   Non e' una lezione e non deve sembrarlo: sfondo piu' vivo, un alone che
+   respira e tre scintille sfasate. E' l'unico nodo che si muove da solo, ed
+   e' cosi' che si fa notare senza dover gridare. */
+
+.free-node .node-disc {
+  background: linear-gradient(145deg, var(--brand-400), var(--brand-600) 52%, var(--brand-800));
+}
+.free-node .node-disc .icon { width: calc(var(--disc) * .50); height: calc(var(--disc) * .50); }
+
+/* Il faro spunta da dietro il disco, spostato di lato: la barca, quando
+   attracca, gli si sovrappone senza coprirlo. Sta in tema con le onde in
+   fondo alla pagina, ed e' l'unica cosa "disegnata" della schermata. */
+.node-lighthouse {
+  position: absolute;
+  z-index: 0;
+  left: 50%;
+  bottom: calc(100% - var(--disc) * .14);
+  transform: translateX(-82%);
+  width: calc(var(--disc) * 1.12);
+  height: auto;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 4px rgba(2, 6, 23, .12));
+}
+
+/* Nome sotto e non sopra: sopra ci sono le scintille. */
+.free-node .node-name {
+  bottom: auto;
+  top: calc(100% + var(--disc) * .10);
+  color: var(--brand-800);
+}
+
+.free-glow {
+  position: absolute;
+  z-index: 0;
+  left: 50%; top: 50%;
+  width: calc(var(--disc) * 1.85);
+  height: calc(var(--disc) * 1.85);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle,
+              rgba(20, 184, 166, .26) 0%,
+              rgba(20, 184, 166, .10) 42%,
+              rgba(20, 184, 166, 0) 68%);
+  pointer-events: none;
+  animation: free-breathe 5.5s var(--ease) infinite;
+}
+
+
+/* --- L'omino --- */
+
+.path-avatar {
+  position: absolute;
+  left: 0; top: 0;
+  z-index: 3;
+  pointer-events: none;
+  transition: transform 430ms var(--ease-back);
+}
+/* Lo scafo della barca sta al 92% dell'altezza del disegno, non in fondo:
+   il -92% invece del solito -100% lo fa appoggiare sul bordo del disco
+   invece di lasciarlo sospeso sopra. */
+.path-avatar {
+  transform: translate(calc(var(--x) - 50%), calc(var(--y) - var(--disc-r) - 92%));
+}
+.path-avatar img {
+  display: block;
+  width: calc(var(--disc) * .58);
+  height: auto;
+  /* Un'ombra corta: la stacca dal disco su cui e' appoggiata e da' l'idea
+     che ci sia posata sopra invece che disegnata sopra. */
+  filter: drop-shadow(0 2px 3px rgba(2, 6, 23, .28));
+}
+.avatar-inner { display: block; transform-origin: 50% 100%; }
+.avatar-inner.hop  { animation: avatar-hop 430ms var(--ease); }
+.avatar-inner.dive { animation: avatar-dive 430ms var(--ease) forwards; }
+
+@keyframes avatar-hop {
+  0%   { transform: translateY(0)     scaleY(1); }
+  22%  { transform: translateY(-13px) scaleY(1.07); }
+  60%  { transform: translateY(-16px) scaleY(1.02); }
+  100% { transform: translateY(0)     scaleY(1); }
+}
+/* "Entra" nel cerchio: si accovaccia un attimo e sprofonda nel disco. */
+@keyframes avatar-dive {
+  0%   { transform: translateY(0)    scale(1);   opacity: 1; }
+  26%  { transform: translateY(-9px) scale(1.05); opacity: 1; }
+  100% { transform: translateY(52px) scale(.22);  opacity: 0; }
+}
+@keyframes next-pulse {
+  0%, 100% { box-shadow: 0 0 0 0    rgba(251, 191, 36, .45); }
+  55%      { box-shadow: 0 0 0 11px rgba(251, 191, 36, 0); }
+}
+@keyframes knock {
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%      { transform: scale(1.09); opacity: .55; }
+}
+@keyframes free-breathe {
+  0%, 100% { transform: translate(-50%, -50%) scale(.92); opacity: .75; }
+  50%      { transform: translate(-50%, -50%) scale(1.06); opacity: 1; }
+}
+
+/* --- Il pulsante di avvio --- */
+
+.path-foot {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+  padding-bottom: var(--s-5);   /* staccato dal bordo, non incollato */
+}
+/* Altezza riservata: il messaggio compare e sparisce, il pulsante non si
+   sposta mentre lo stai per premere. */
+.path-hint {
+  min-height: 22px;
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--warn-800);
+  text-align: center;
+}
+
+.start-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-3);
+  height: 76px;
+  padding: 0 var(--s-9);
+  border: 0;
+  border-radius: var(--r-pill);
+  /* Piu' scuro di prima: sopra le onde chiare in fondo alla pagina il teal
+     medio si mimetizzava. L'anello bianco lo ritaglia dallo sfondo senza
+     uscire dalla palette. */
+  background: linear-gradient(135deg, var(--brand-700), var(--brand-900));
+  color: var(--n-0);
+  font-size: 1.35rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 0 0 5px rgba(255, 255, 255, .58), var(--sh-3);
+  transition: transform var(--dur-fast) var(--ease),
+              box-shadow var(--dur) var(--ease);
+}
+.start-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, .72), var(--sh-3);
+}
+.start-btn:active { transform: translateY(0) scale(.985); }
+.start-btn:disabled { opacity: .45; cursor: default; transform: none; box-shadow: var(--sh-1); }
+.start-btn .start-word { font-size: 1.05em; }
+.start-word { letter-spacing: .01em; }
+.start-name { font-weight: 600; opacity: .9; }
+.start-btn .icon { width: 24px; height: 24px; stroke-width: 2.4; margin-left: 2px; }
+
+
+/* ======================= FREE PRACTICE ==================================
    Stessa lingua della lezione. Due modi: sola webcam, oppure webcam piu'
    la demo di un segno appuntato dalla libreria - e in quel caso lo stesso
    rapporto di dimensioni della lezione (demo al 74%, webcam dominante). */
@@ -1586,6 +2004,22 @@ button { font: inherit; color: inherit; }
 }
 .chip-btn[aria-expanded="true"] .chip-count { background: rgba(255, 255, 255, .24); color: var(--n-0); }
 
+/* La libreria non e' un interruttore come gli altri: e' meta' del contenuto
+   della schermata, e da chiusa in stile neutro finiva in secondo piano.
+   Resta piena anche chiusa, e da aperta scurisce di un gradino. */
+#free-library {
+  background: var(--brand-700);
+  border-color: var(--brand-700);
+  color: var(--n-0);
+}
+#free-library:hover { background: var(--brand-800); border-color: var(--brand-800); }
+#free-library .chip-count { background: rgba(255, 255, 255, .24); color: var(--n-0); }
+#free-library[aria-expanded="true"],
+#free-library[aria-expanded="true"]:hover {
+  background: var(--brand-900);
+  border-color: var(--brand-900);
+}
+
 /* Il chip "quiet" resta sottotono anche da aperto: e' uno strumento, e il
    teal e' riservato alle funzioni della pratica. */
 .chip-btn.quiet[aria-expanded="true"] {
@@ -1662,11 +2096,29 @@ button { font: inherit; color: inherit; }
      tornare a poter crescere, ed e' giusto che scorra. */
   .free-screen { padding: var(--s-4) var(--s-4) var(--s-6); height: auto; }
 
+  /* La scala dei nodi la decide lessons.js dallo spazio disponibile: qui
+     restano solo i margini della pagina e il pulsante. */
+  .path-screen { padding: var(--s-4); }
+  .start-btn { height: 62px; padding: 0 var(--s-7); font-size: 1.12rem; }
+  .start-btn .icon { width: 21px; height: 21px; }
+
   .free-stage { flex-direction: column; align-items: center; gap: var(--s-4); }
   .free-stage .stage-col { width: 100%; max-width: 560px; }
   .free-title p { display: none; }
 
   .result { width: 100%; }
+}
+
+/* Finestra bassa: la corsia del percorso e' gia' governata dal JS, qui si
+   recupera altezza sulle due fasce fisse sopra e sotto. */
+@media (max-height: 660px) {
+  .path-screen { padding: var(--s-3) var(--s-5) var(--s-4); gap: var(--s-2); }
+  .path-title h1 { font-size: var(--t-lg); }
+  .path-title p { display: none; }
+  .path-hint { min-height: 18px; font-size: var(--t-xs); }
+  .path-foot { padding-bottom: var(--s-3); }
+  .start-btn { height: 58px; padding: 0 var(--s-7); font-size: 1.08rem; }
+  .start-btn .icon { width: 20px; height: 20px; }
 }
 
 @media (max-width: 800px) {
@@ -1699,5 +2151,10 @@ button { font: inherit; color: inherit; }
   .cam-card[data-state="correct"] .cam-verdict,
   .cam-card[data-state="wrong"] .cam-verdict { animation: none; opacity: 1; }
   .fb-timer.run { animation: none; transform: scaleX(0); }
+  .path-node[data-state="next"] .node-ring { animation: none; }
+  .free-glow { animation: none; }
+  .path-scroll { scroll-behavior: auto; }
+  .avatar-inner.hop { animation: none; }
+  .avatar-inner.dive { animation: none; opacity: 0; }
   .library { transition: none; }
 }

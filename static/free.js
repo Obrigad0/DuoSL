@@ -1,6 +1,6 @@
 // static/free.js
 //
-// Free Training: nessun copione, nessun passo da seguire. L'utente fa un segno
+// Free Practice: nessun copione, nessun passo da seguire. L'utente fa un segno
 // qualunque e la schermata gli dice che cosa ha letto.
 //
 // Stessa idea della lezione — l'occhio sta sulla propria immagine — ma qui
@@ -26,7 +26,7 @@ const CAMERA_TROUBLE = {
   denied: {
     icon: '#i-camera',
     title: 'Camera access needed',
-    text: 'Free training reads your signs from the webcam. Allow camera access in your browser’s address bar, then try again.',
+    text: 'Free practice reads your signs from the webcam. Allow camera access in your browser’s address bar, then try again.',
   },
   nocam: {
     icon: '#i-alert',

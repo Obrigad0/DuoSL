@@ -52,6 +52,11 @@ export const Progress = {
   reset() {
     return post('/api/progress/reset', {});
   },
+
+  /** Riempie la memoria come se tutte le lezioni fossero state fatte. */
+  fillDemo() {
+    return post('/api/progress/demo', {});
+  },
 };
 
 export const KNOWN = 'known';

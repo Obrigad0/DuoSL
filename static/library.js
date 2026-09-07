@@ -5,7 +5,7 @@
 //
 // Non e' un modale. La pagina sotto resta viva e usabile mentre e' aperto —
 // e' esattamente il motivo per cui e' un drawer che RESTRINGE il palco invece
-// di una finestra che lo copre: durante il free training la webcam non deve
+// di una finestra che lo copre: durante il free practice la webcam non deve
 // mai sparire.
 
 import { Progress } from './progress.js';

@@ -3,7 +3,7 @@
 // Trasporto: webcam -> WebSocket -> frame annotati e messaggi del server.
 // Non sa nulla di lezioni ne' tocca il DOM oltre al proprio <video> e <canvas>:
 // espone callback, cosi' la stessa sessione serve sia la schermata lezione sia
-// il Free Training senza duplicare la logica di camera e socket.
+// il Free Practice senza duplicare la logica di camera e socket.
 
 const FPS = 20;
 const JPEG_QUALITY = 0.92;
@@ -27,7 +27,7 @@ function cameraErrorKind(err) {
 export class SignSession {
   /**
    * @param {object} o
-   * @param {string|null} o.lesson  id della lezione, null per il free training
+   * @param {string|null} o.lesson  id della lezione, null per il free practice
    * @param {HTMLVideoElement} o.video   sorgente grezza della webcam
    * @param {HTMLCanvasElement} o.canvas dove finisce il frame annotato dal server
    */
