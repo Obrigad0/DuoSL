@@ -14,7 +14,6 @@
     { "gloss": "HAPPY", "demo_url": "/demos/happy.mp4", "from_memory": true },
     { "gloss": "HURT", "demo_url": "/demos/hurt.mp4"},
     { "gloss": "WHERE", "demo_url": "/demos/where.mp4" },
-    { "gloss": "YOU", "demo_url": "/demos/you.mp4", "from_memory": true },
     { "gloss": "HURT", "demo_url": "/demos/hurt.mp4", "from_memory": true },
     { "gloss": "WHERE", "demo_url": "/demos/where.mp4", "from_memory": true  }
 

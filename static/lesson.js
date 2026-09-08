@@ -1080,13 +1080,19 @@ export class LessonView {
     this.el.demo.pause();
     this.el.word.textContent = 'All done';
     this._setCamState('idle');
-
+    
     this._showCover({
       icon: '#i-check',
       tone: 'ok',
       title: 'Lesson complete',
       text: `${done} of ${this.totalSteps} signs recognised.`,
-      signs: this.steps.map((s, i) => ({ label: s.display, ok: this.stepStatus[i] === 'done' })),
+      signs: this.steps
+        .map((s, i) => ({ ...s, originalIndex: i }))
+        .filter(s => !s.from_memory)
+        .map(s => ({
+          label: s.display_text || s.gloss || s.display,
+          ok: this.stepStatus[s.originalIndex] === 'done'
+        })),
       actions: [
         { label: 'Practice again', primary: true, onClick: () => this._restart() },
         { label: 'Back to lessons', onClick: () => this.onExit() },
