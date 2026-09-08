@@ -1096,6 +1096,10 @@ button { font: inherit; color: inherit; }
 }
 @keyframes dbg-in { from { opacity: 0; transform: translateY(10px); } }
 
+/* Il bottom della regola sopra e' tarato sulla barra del verdetto della
+   lezione, che nel Free Practice non c'e': la' sotto resterebbe un buco. */
+.debug-panel.free-debug { bottom: var(--s-5); }
+
 .debug-panel h3 {
   font-size: var(--t-xs);
   font-weight: 700;
@@ -1150,6 +1154,29 @@ button { font: inherit; color: inherit; }
   font-variant-numeric: tabular-nums;
 }
 
+/* Lo slider: accent-color invece di riscrivere traccia e cursore. Sono tre
+   righe al posto di trenta, e in Chrome il risultato e' identico. */
+.dbg-slider { margin-bottom: var(--s-4); }
+.dbg-slider label {
+  display: block;
+  margin-bottom: var(--s-2);
+  color: var(--text-mute);
+}
+.dbg-slider-row { display: flex; align-items: center; gap: var(--s-3); }
+.dbg-slider input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--brand-700);
+  cursor: pointer;
+}
+.dbg-slider-value {
+  flex: none;
+  min-width: 42px;
+  text-align: right;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
 .dbg-rows { display: grid; gap: 5px; }
 .dbg-rows > div { display: flex; justify-content: space-between; gap: var(--s-3); }
 .dbg-rows dt { color: var(--text-mute); }
@@ -1163,6 +1190,7 @@ button { font: inherit; color: inherit; }
   color: var(--text-mute);
   line-height: 1.5;
 }
+.dbg-note b { color: var(--text-soft); font-weight: 700; }
 .dbg-note code {
   font-size: .95em;
   padding: 1px 5px;
@@ -1721,12 +1749,9 @@ button { font: inherit; color: inherit; }
   --lib-open-w: 356px;
   --lib-w: 0px;
 
-<<<<<<< Updated upstream
-=======
   /* Sola webcam: 4/3 piu' margine. Con un segno appuntato ci si aggiunge la
      demo, con la stessa proporzione della lezione (--demo-k). Cambia la
      classe, non la formula. */
->>>>>>> Stashed changes
   --stage-ratio: 1.34;
 
   --free-cam-h: max(200px, min(calc(100vh - 15rem), 560px,
@@ -1817,7 +1842,11 @@ button { font: inherit; color: inherit; }
   overflow-wrap: anywhere;
 }
 .result[data-state="empty"] .result-word { font-size: var(--t-lg); font-weight: 600; }
-.result[data-state="unknown"] .result-word { font-size: var(--t-xl); opacity: .85; }
+/* "weak" e' il gesto arrivato ma con troppa poca confidenza; "unknown" e' un
+   indice del modello senza voce nel vocabolario. Cause diverse, per chi
+   pratica sono la stessa cosa: rifallo. Stesso trattamento. */
+.result[data-state="unknown"] .result-word,
+.result[data-state="weak"] .result-word { font-size: var(--t-xl); opacity: .85; }
 .result-word.is-new { animation: word-in 380ms var(--ease-back); }
 
 #free-speak {
@@ -1945,13 +1974,32 @@ button { font: inherit; color: inherit; }
   position: relative;
   aspect-ratio: 1 / 1;
   background: var(--n-100);
+
+  /* Senza questo la card si sfascia al primo passaggio del mouse, e non su
+     quella che stai puntando ma sulla sua vicina di riga.
+
+     La catena: .lib-card e' un flex in colonna, quindi qui min-height vale
+     "auto", cioe' la dimensione minima automatica del flexbox, che cade sul
+     contenuto. Finche' il video non ha src non ha proporzioni proprie e vale
+     il default 300x150 dei replaced element: 150px, appena sotto il lato del
+     quadrato, quindi non si nota. Al primo hover arriva il src, il video
+     acquista la sua proporzione vera e per gli 11 demo verticali 3:4 il minimo
+     diventa un terzo piu' alto del quadrato: il riquadro cresce, la riga della
+     griglia si alza, la card accanto viene stirata e il suo nome resta a meta'
+     con il vuoto sotto.
+
+     min-height: 0 toglie di mezzo quel minimo, e aspect-ratio torna a comandare
+     da sola qualunque video ci sia dentro. */
+  min-height: 0;
 }
 .lib-thumb video {
   width: 100%; height: 100%;
   object-fit: contain;
   display: block;
   opacity: 0;
-  background: var(--stage-900);
+  /* Fondo trasparente: le bande di un video verticale dentro il riquadro
+     quadrato prendono cosi' il grigio chiaro del riquadro invece di due strisce
+     nere, che in un pannello chiaro pesavano. */
   transition: opacity var(--dur) var(--ease);
 }
 .lib-card.is-playing .lib-thumb video { opacity: 1; }
@@ -1965,11 +2013,28 @@ button { font: inherit; color: inherit; }
 .lib-thumb .thumb-idle .icon { width: 26px; height: 26px; }
 .lib-card.is-playing .thumb-idle { display: none; }
 
+/* L'anteprima sta dietro al video, non dentro di lui: cosi' il video ci sfuma
+   sopra all'hover e, quando si ferma, l'anteprima ricompare. L'immagine la
+   mette library.js come stile inline, perche' cambia per ogni segno.
+   La manina resta per i segni senza demo e per quelli la cui anteprima non e'
+   ancora stata generata. */
+.lib-thumb.has-poster {
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.lib-thumb.has-poster .thumb-idle { display: none; }
+
 .lib-name {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 6px;
+  /* Le righe della griglia sono alte quanto la card piu' alta e le card
+     vengono stirate: senza questo lo spazio in piu' si deposita SOTTO il nome
+     invece che sopra. Con min-height:0 sul riquadro le card sono gia' tutte
+     uguali, ma un nome che va a capo basterebbe a rifare il danno. */
+  margin-top: auto;
   padding: 8px 10px;
   font-size: var(--t-sm);
   font-weight: 700;
@@ -2059,8 +2124,11 @@ button { font: inherit; color: inherit; }
     margin-inline: auto;
   }
 
-<<<<<<< Updated upstream
-  .step-name { display: none; }
+  .step-name { display: none; }   /* nella barra stretta non ci sta */
+
+  /* Impilata, la card della demo e' larga al massimo 300px: la frase lunga
+     andrebbe su quattro righe e spingerebbe fuori il pulsante. */
+  .dh-text { display: none; }
 
   .start-menu-btn { width: 100%; height: 62px; font-size: 1.15rem; }
   .menu-features { gap: var(--s-3) var(--s-5); margin-top: var(--s-6); }
@@ -2072,13 +2140,6 @@ button { font: inherit; color: inherit; }
 @media (max-height: 700px) {
   .menu-hero { transform: none; }
   .menu-glow { top: 50%; }
-=======
-  .step-name { display: none; }   /* nella barra stretta non ci sta */
-
-  /* Impilata, la card della demo e' larga al massimo 260px: la frase lunga
-     andrebbe su quattro righe e spingerebbe fuori il pulsante. */
-  .dh-text { display: none; }
->>>>>>> Stashed changes
 }
 
 @media (max-width: 1100px) {
@@ -2134,6 +2195,10 @@ button { font: inherit; color: inherit; }
     top: 64px; bottom: auto;
     width: auto;
   }
+  /* .debug-panel.free-debug vince per specificita' sul bottom:auto qui sopra,
+     e con top e bottom entrambi fissati il pannello si stirava da cima a fondo
+     schermo. Va ridetto qui. */
+  .debug-panel.free-debug { bottom: auto; }
   .feedback { flex-wrap: wrap; }
   .fb-text { flex: 1 1 100%; order: -1; }
 }

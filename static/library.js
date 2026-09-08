@@ -195,6 +195,20 @@ export class LibraryDrawer {
     const thumb = document.createElement('div');
     thumb.className = 'lib-thumb';
 
+    // L'anteprima e' un fotogramma preso a meta' gesto (utils/make_posters.py),
+    // ~8 KB l'uno: senza, il pannello si apriva su venticinque riquadri vuoti
+    // tutti uguali, perche' i video non si scaricano finche' non ci passi sopra.
+    //
+    // Sta come SFONDO del riquadro e non come attributo poster del video: il
+    // poster il browser lo mostra solo finche' non ha decodificato un
+    // fotogramma, quindi dopo il primo hover la card sarebbe rimasta per sempre
+    // sul fotogramma iniziale, che e' la posa di riposo e non dice nulla. Sotto
+    // al video, invece, ricompare ogni volta che il video si ferma.
+    if (sign.poster_url) {
+      thumb.classList.add('has-poster');
+      thumb.style.backgroundImage = `url("${sign.poster_url}")`;
+    }
+
     const idle = document.createElement('span');
     idle.className = 'thumb-idle';
     idle.innerHTML = '<svg class="icon"><use href="#i-hand"></use></svg>';
@@ -210,6 +224,7 @@ export class LibraryDrawer {
       video.loop = true;
       video.playsInline = true;
       video.preload = 'none';
+
       thumb.appendChild(video);
 
       const play = () => this._play(card, video, sign.demo_url);

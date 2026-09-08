@@ -17,6 +17,21 @@ const $ = (id) => document.getElementById(id);
 
 const HINT_MS = 2400;
 
+/**
+ * Sotto quanta confidenza un gesto non viene mostrato come segno riconosciuto.
+ *
+ * Il classificatore risponde SEMPRE qualcosa: ogni cattura produce un argmax,
+ * anche quando l'utente si e' solo grattato il naso. Senza una soglia il
+ * Free Practice nomina un segno per ogni movimento, e la parola grande a
+ * schermo suggerisce una sicurezza che non c'e'.
+ *
+ * 45% e' un punto di partenza, non una verita': il softmax di questo modello
+ * non e' calibrato, per questo la soglia si regola da un pannello invece di
+ * stare fissa nel codice.
+ */
+const DEFAULT_MIN_CONF = 45;
+const CONF_KEY = 'duosl.confMin';
+
 const DISCARD_HINT = {
   troppo_breve: 'Hold the sign a little longer',
   mani_non_visibili: 'Keep your hands in frame',
@@ -76,6 +91,13 @@ export class FreeView {
       coverText: $('free-cover-text'),
       coverActions: $('free-cover-actions'),
 
+      debugToggle: $('free-debug-toggle'),
+      debug: $('free-debug-panel'),
+      dbgMin: $('free-dbg-min'),
+      dbgMinValue: $('free-dbg-min-value'),
+      dbgLast: $('free-dbg-last'),
+      dbgConf: $('free-dbg-conf'),
+
       result: $('free-result'),
       resultWord: $('free-result-word'),
       speak: $('free-speak'),
@@ -90,6 +112,12 @@ export class FreeView {
     this.lastLabel = null;
     this.userPausedDemo = false;
     this.hintTimer = null;
+
+    // Soglia in 0..1. L'ultimo messaggio si tiene da parte per poter
+    // rivalutare cio' che e' gia' a schermo quando si muove lo slider: e'
+    // quello che rende chiaro a cosa serve, senza doverlo spiegare.
+    this.minConf = DEFAULT_MIN_CONF / 100;
+    this.lastMsg = null;
 
     this.library = new LibraryDrawer({ onPin: (sign) => this._pin(sign) });
     this._onKey = this._onKey.bind(this);
@@ -121,6 +149,8 @@ export class FreeView {
   _installDevHook() {
     window.__duoslFree = {
       simulate: (gloss, confidence = 0.9) => this._onRecognition({ gloss, confidence }),
+      /** Soglia in percentuale, come lo slider: __duoslFree.minConf(70) */
+      minConf: (pct) => this._setMinConf(pct),
       view: this,
     };
   }
@@ -131,6 +161,10 @@ export class FreeView {
     this.lastLabel = null;
     this.userPausedDemo = false;
     this.troubled = false;
+    this.lastMsg = null;
+
+    this.el.debug.hidden = true;
+    this.el.debugToggle.setAttribute('aria-pressed', 'false');
 
     this.el.screen.classList.remove('has-pinned');
     this.el.demoCol.hidden = true;
@@ -193,6 +227,8 @@ export class FreeView {
 
     on(this.el.exit, 'click', () => this.onExit());
     on(this.el.voiceToggle, 'click', () => this._toggleVoice());
+    on(this.el.debugToggle, 'click', () => this._toggleDebug());
+    on(this.el.dbgMin, 'input', () => this._setMinConf(Number(this.el.dbgMin.value)));
 
     on(this.el.speak, 'click', () => {
       // Richiesta esplicita: parla anche a dettatura spenta.
@@ -232,11 +268,60 @@ export class FreeView {
       this.el.demo.classList.add('mirrored');
       this.el.demoMirror.setAttribute('aria-pressed', 'true');
     }
+
+    const salvata = Number(this._pref(CONF_KEY, DEFAULT_MIN_CONF));
+    this._setMinConf(Number.isFinite(salvata) ? salvata : DEFAULT_MIN_CONF, false);
+  }
+
+  /* ---------------------------------------------------- soglia e pannello */
+
+  /**
+   * @param {number} pct     soglia in percentuale, 0..100
+   * @param {boolean} salva  false quando il valore arriva gia' da localStorage
+   */
+  _setMinConf(pct, salva = true) {
+    const v = Math.min(100, Math.max(0, Math.round(pct)));
+    this.minConf = v / 100;
+
+    this.el.dbgMin.value = String(v);
+    this.el.dbgMinValue.textContent = `${v}%`;
+    if (salva) {
+      try { localStorage.setItem(CONF_KEY, String(v)); } catch { /* finestra privata */ }
+    }
+
+    // Rivaluta cio' che e' gia' a schermo: alzando la soglia oltre la
+    // confidenza dell'ultimo segno, quello diventa "Sign not clear" sotto gli
+    // occhi. Senza, lo slider sembrerebbe non fare niente finche' non si rifa'
+    // un gesto.
+    if (this.lastMsg) this._renderRecognition(false);
+  }
+
+  _toggleDebug() {
+    const open = this.el.debug.hidden;
+    this.el.debug.hidden = !open;
+    this.el.debugToggle.setAttribute('aria-pressed', String(open));
   }
 
   // --------------------------------------------------------- dal riconoscitore
 
   _onRecognition(msg) {
+    this.lastMsg = msg;
+    this._updateDebug(msg);
+    this._renderRecognition(true);
+  }
+
+  /**
+   * Decide cosa mostrare per l'ultimo gesto catturato.
+   *
+   * @param {boolean} parla  la voce legge solo un gesto appena arrivato, non
+   *                         una rivalutazione dovuta allo slider: sentirsi
+   *                         ripetere il segno mentre si trascina la manopola
+   *                         sarebbe insopportabile.
+   */
+  _renderRecognition(parla) {
+    const msg = this.lastMsg;
+    if (!msg) return;
+
     // "UNKNOWN" e' un indice del modello senza voce nel vocabolario: mostrarlo
     // cosi' com'e' sembrerebbe il nome di un segno.
     if (!msg.gloss || msg.gloss === 'UNKNOWN') {
@@ -244,9 +329,30 @@ export class FreeView {
       return;
     }
 
+    // Sotto soglia: il gesto e' arrivato, ma il modello non e' abbastanza
+    // sicuro. Si dice, invece di non mostrare niente: un gesto scartato in
+    // silenzio e' indistinguibile da un gesto mai visto, e l'utente resterebbe
+    // a chiedersi se la telecamera lo inquadra.
+    if (typeof msg.confidence === 'number' && msg.confidence < this.minConf) {
+      this._showResult({ label: null, confidence: msg.confidence, weak: true });
+      return;
+    }
+
     const label = this.library.displayOf(msg.gloss) || msg.gloss;
     this._showResult({ label, confidence: msg.confidence });
-    Speech.say(label);
+    if (parla) Speech.say(label);
+  }
+
+  /** Le due righe del pannello: mostrano anche cio' che la soglia ha scartato. */
+  _updateDebug(msg) {
+    if (this.el.debug.hidden) return;
+    const label = (msg.gloss && msg.gloss !== 'UNKNOWN')
+      ? (this.library.displayOf(msg.gloss) || msg.gloss)
+      : 'UNKNOWN';
+    this.el.dbgLast.textContent = label;
+    this.el.dbgConf.textContent = typeof msg.confidence === 'number'
+      ? `${Math.round(msg.confidence * 100)}%`
+      : '\u2014';
   }
 
   _onStatus(msg) {
@@ -294,10 +400,10 @@ export class FreeView {
       return;
     }
 
-    const { label, confidence } = result;
+    const { label, confidence, weak } = result;
     this.lastLabel = label;
-    this.el.result.dataset.state = label ? 'ok' : 'unknown';
-    this.el.resultWord.textContent = label || 'Not recognised';
+    this.el.result.dataset.state = label ? 'ok' : (weak ? 'weak' : 'unknown');
+    this.el.resultWord.textContent = label || (weak ? 'Sign not clear' : 'Not recognised');
     this.el.speak.hidden = !label;
 
     this.el.resultWord.classList.remove('is-new');
@@ -460,6 +566,10 @@ export class FreeView {
       case 'l': case 'L':
         if (onControl) return;
         this.library.toggle();
+        break;
+      case 'd': case 'D':
+        if (onControl) return;
+        this._toggleDebug();
         break;
     }
   }

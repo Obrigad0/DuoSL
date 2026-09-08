@@ -360,7 +360,7 @@ export class LessonPath {
     btn.setAttribute('aria-label', locked
       ? `Lesson ${i + 1}, ${lesson.title}, locked`
       : `Lesson ${i + 1}, ${lesson.title}`);
-    btn.title = locked ? `${lesson.title} — locked` : lesson.title;
+    btn.title = locked ? `${lesson.title} (locked)` : lesson.title;
 
     const icon = locked ? '#i-lock' : (ICONS[lesson.icon] || '#i-hand');
     btn.innerHTML = `

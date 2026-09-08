@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DuoSL – Sign Language Practice</title>
+  <title>DuoSL, Sign Language Practice</title>
   <link rel="stylesheet" href="/static/style.css" />
   <link rel="icon" href="/static/favicon.ico" />
 </head>
@@ -171,7 +171,7 @@
           <span class="chip-label" id="voice-label">Voice off</span>
         </button>
         <button id="debug-toggle" class="chip-btn quiet" type="button" aria-pressed="false"
-                title="Capture diagnostics — for tuning the movement thresholds (D)">
+                title="Capture diagnostics for tuning the movement thresholds (D)">
           <svg class="icon"><use href="#i-sliders"></use></svg>
           <span class="chip-label">Debug</span>
         </button>
@@ -183,7 +183,7 @@
       <!-- aria-live: sui segni "a memoria" questa riga e' la consegna, ed e'
            l'unico posto dove si dice che la demo manca di proposito. Cambia
            solo quando cambia davvero lo stato, non ad ogni step. -->
-      <p class="prompt-eyebrow" aria-live="polite">Your turn — make this sign</p>
+      <p class="prompt-eyebrow" aria-live="polite">Your turn, make this sign</p>
       <div class="prompt-row">
         <!-- Indietro e altoparlante fanno coppia, uno per lato del badge.
              Fuori dal badge avrebbero spostato il segno dal centro, che e' il
@@ -218,7 +218,7 @@
           <div class="demo-hidden" id="demo-hidden" hidden>
             <svg class="icon" aria-hidden="true"><use href="#i-eye-off"></use></svg>
             <p class="dh-title">Demo hidden</p>
-            <p class="dh-text">You have seen this sign before — try it from memory.</p>
+            <p class="dh-text">You have seen this sign before, try it from memory.</p>
             <button id="demo-reveal" class="btn" type="button">
               <svg class="icon"><use href="#i-eye"></use></svg>
               Show me the sign
@@ -332,7 +332,7 @@
         <div><dt>Discarded</dt><dd id="dbg-discarded">—</dd></div>
         <div><dt>Captures</dt><dd id="dbg-captures">0</dd></div>
       </dl>
-      <p class="dbg-note">Thresholds live in <code>server.py</code> — restart after changing them.</p>
+      <p class="dbg-note">Thresholds live in <code>server.py</code>. Restart after changing them.</p>
     </aside>
 
   </div>
@@ -350,7 +350,7 @@
 
       <div class="free-title">
         <h1>Free Practice</h1>
-        <p>Make any sign you know — DuoSL will name it</p>
+        <p>Make any sign you know, DuoSL will name it</p>
       </div>
 
       <div class="bar-actions">
@@ -366,6 +366,11 @@
           <svg class="icon icon-on"><use href="#i-volume-on"></use></svg>
           <svg class="icon icon-off"><use href="#i-volume-off"></use></svg>
           <span class="chip-label" id="free-voice-label">Voice off</span>
+        </button>
+        <button id="free-debug-toggle" class="chip-btn quiet" type="button" aria-pressed="false"
+                title="Recognition settings, how sure the model has to be (D)">
+          <svg class="icon"><use href="#i-sliders"></use></svg>
+          <span class="chip-label">Debug</span>
         </button>
       </div>
     </header>
@@ -465,6 +470,32 @@
       </aside>
 
     </div>
+
+    <!-- Soglia di riconoscimento. Sta in un pannello debug e non in vista
+         perche' e' una manopola da taratura, non una funzione: chi pratica non
+         deve chiedersi cosa sia. -->
+    <aside class="debug-panel free-debug" id="free-debug-panel" hidden aria-label="Recognition settings">
+      <h3>Recognition</h3>
+
+      <div class="dbg-slider">
+        <label for="free-dbg-min">Minimum confidence</label>
+        <div class="dbg-slider-row">
+          <input type="range" id="free-dbg-min" min="0" max="100" step="1" value="45">
+          <output class="dbg-slider-value" id="free-dbg-min-value" for="free-dbg-min">45%</output>
+        </div>
+      </div>
+
+      <!-- Le due righe che servono a scegliere la soglia invece di indovinarla:
+           qui la confidenza si vede anche quando il segno viene scartato. -->
+      <dl class="dbg-rows">
+        <div><dt>Last capture</dt><dd id="free-dbg-last">&mdash;</dd></div>
+        <div><dt>Confidence</dt><dd id="free-dbg-conf">&mdash;</dd></div>
+      </dl>
+
+      <p class="dbg-note">Captures below the threshold are shown as
+        <b>Sign not clear</b> instead of a sign name. The model stays confident
+        even when it is wrong, so a low bar lets random hand movements through.</p>
+    </aside>
   </div>
 
 

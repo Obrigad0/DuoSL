@@ -121,7 +121,7 @@ DuoSL - come avviare il test in standalone
    Alcuni segni hanno la demo COPERTA: al posto del video trovi "Demo hidden"
    e il pulsante "Show me the sign". Servono a provare a rifare da solo un
    segno gia' incontrato prima nella lezione. Sopra la parola l'occhiello
-   cambia in "From memory — no demo this time", cosi' e' chiaro che la demo
+   cambia in "From memory, no demo this time", cosi' e' chiaro che la demo
    manca di proposito e non e' un guasto.
    Scoprirla e' sempre possibile e non costa niente: e' un esercizio, non un
    blocco. Una volta scoperta compare una quarta pillola sotto al video (occhio
@@ -160,6 +160,27 @@ DuoSL - come avviare il test in standalone
    Se il modello restituisce un indice senza voce nel vocabolario, il box dice
    "Not recognised" invece di mostrare la stringa UNKNOWN.
 
+   LA SOGLIA DI RICONOSCIMENTO ("Debug" in alto a destra, o il tasto D)
+   Il classificatore risponde SEMPRE qualcosa: ogni cattura produce un segno,
+   anche quando ti sei solo grattato il naso. Senza una soglia il Free Practice
+   nomina un segno per ogni movimento, e la parola grande a schermo suggerisce
+   una sicurezza che non c'e'.
+
+   Lo slider "Minimum confidence" decide quanto sicuro deve essere il modello
+   perche' il segno venga mostrato. Sotto quel valore il box dice "Sign not
+   clear" invece del nome, non legge niente ad alta voce e non offre il tasto
+   dell'altoparlante. La percentuale resta visibile: si vede di quanto e'
+   mancato.
+
+   Parte da 45%, ma quel numero non e' una verita': dipende dal modello e da
+   com'e' illuminata la stanza. Per tararlo, tieni il pannello aperto mentre
+   pratichi e guarda le due righe "Last capture" e "Confidence": mostrano anche
+   le catture che la soglia ha scartato, quindi vedi dove passa il confine fra
+   i tuoi segni buoni e il rumore. Il valore scelto resta salvato.
+
+   Muovendo lo slider il risultato gia' a schermo si aggiorna subito, senza
+   bisogno di rifare il gesto.
+
    LIBRERIA DEI SEGNI ("Library" in alto a destra, o il tasto L)
    Un pannello laterale coi segni che hai gia' incontrato nelle lezioni, divisi
    in "Known" (riusciti) e "To review" (saltati), con un filtro in testa.
@@ -167,15 +188,22 @@ DuoSL - come avviare il test in standalone
    deve mai sparire. Sotto i 1100px di larghezza torna a sovrapporsi, perche'
    li' restringere renderebbe la webcam inutilizzabile.
 
-   Passando col mouse su una card il video parte da solo. I filmati vengono
-   scaricati SOLO in quel momento: i 25 demo pesano ~19 MB e caricarli tutti
-   all'apertura del pannello sarebbe uno spreco.
+   Ogni card mostra un fotogramma del segno, preso a meta' gesto. Sono
+   immagini a se' (lectures/demos/posters/, ~8 KB l'una, 194 KB in tutto):
+   servono perche' i video veri non vengono scaricati all'apertura, e senza
+   anteprima il pannello si apriva su venticinque riquadri vuoti tutti uguali.
+
+   Passando col mouse su una card il video parte da solo e sfuma sopra
+   l'anteprima; uscendo si ferma e l'anteprima torna. I filmati vengono
+   scaricati SOLO al primo passaggio del mouse: i 25 demo pesano ~19 MB e
+   caricarli tutti all'apertura del pannello sarebbe uno spreco.
 
    Cliccando una card il segno si "appunta" accanto alla webcam, esattamente
    come la demo nelle lezioni, con pausa / 0.5x / specchia. Un secondo click
    sulla card, o la X sulla demo, lo stacca e lo spazio torna alla webcam.
 
    Scorciatoie: L libreria   V dettatura   Spazio pausa demo   Esc esci
+                D soglia di riconoscimento
    (Esc chiude prima la libreria, poi esce dalla schermata)
 
 8) LA MEMORIA DEI PROGRESSI
@@ -269,6 +297,20 @@ DuoSL - come avviare il test in standalone
 
    Servono video e non GIF perche' una GIF nel browser non si puo' ne' mettere
    in pausa ne' rallentare: non esiste API per farlo.
+
+   DOPO AVER AGGIUNTO UN VIDEO, rigenera le anteprime della libreria:
+
+     python utils/make_posters.py
+
+   Fa solo quelle che mancano; con --force le rifa' tutte. Prende il fotogramma
+   piu' nitido fra alcuni a meta' clip (il primo fotogramma e' quasi sempre la
+   posa di riposo, uguale per tutti i segni e quindi inutile a distinguerli), lo
+   rimpicciolisce a 320px di lato lungo e lo salva in lectures/demos/posters/.
+   Usa OpenCV, che c'e' gia' fra le dipendenze: niente ffmpeg.
+
+   Le anteprime vanno versionate insieme ai video. Se te ne dimentichi non si
+   rompe niente: quel segno torna a mostrare il riquadro vuoto con la manina,
+   perche' il server manda l'anteprima solo se il file esiste davvero.
 
 12) FERMARE IL SERVER
    Ctrl+C nel terminale dove gira uvicorn.

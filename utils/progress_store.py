@@ -53,9 +53,24 @@ def _short_title(name):
     return name.split(" - ", 1)[1].strip() if " - " in name else name
 
 
+def _poster_url(demo_url, lectures_dir):
+    """
+    /demos/hello.mp4 -> /demos/posters/hello.jpg, ma solo se il file c'e'.
+
+    Le anteprime le produce utils/make_posters.py, a mano. Controllare che
+    esistano evita che un video aggiunto senza rilanciare lo script lasci un
+    404 in console: quel segno torna semplicemente al riquadro vuoto.
+    """
+    if not demo_url:
+        return None
+    nome = os.path.splitext(os.path.basename(demo_url))[0] + ".jpg"
+    su_disco = os.path.join(lectures_dir, "demos", "posters", nome)
+    return "/demos/posters/" + nome if os.path.isfile(su_disco) else None
+
+
 def build_catalog(lectures_dir):
     """
-    gloss -> {display, demo_url, lessons: [...]} leggendo le lezioni.
+    gloss -> {display, demo_url, poster_url, lessons: [...]} leggendo le lezioni.
 
     Un gloss puo' comparire in piu' lezioni (YOUR sta in lesson1 e lesson2):
     vince la prima occorrenza per display e demo, e le lezioni si accumulano.
@@ -92,11 +107,13 @@ def build_catalog(lectures_dir):
                 entry = {
                     "display": step.get("display_text") or gloss,
                     "demo_url": step.get("demo_url"),
+                    "poster_url": _poster_url(step.get("demo_url"), lectures_dir),
                     "lessons": [],
                 }
                 signs[gloss] = entry
             if entry["demo_url"] is None and step.get("demo_url"):
                 entry["demo_url"] = step["demo_url"]
+                entry["poster_url"] = _poster_url(step["demo_url"], lectures_dir)
             if lesson_id not in entry["lessons"]:
                 entry["lessons"].append(lesson_id)
 
@@ -276,6 +293,7 @@ class ProgressStore:
                 "gloss": gloss,
                 "display": meta["display"],
                 "demo_url": meta["demo_url"],
+                "poster_url": meta.get("poster_url"),
                 "lessons": meta["lessons"],
                 "status": record.get("status", REVIEW),
                 "correct": int(record.get("correct", 0)),
