@@ -38,6 +38,8 @@
     <symbol id="i-library" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
     <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></symbol>
     <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M13 5l7 7-7 7"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M1.6 12S5.3 5.2 12 5.2 22.4 12 22.4 12 18.7 18.8 12 18.8 1.6 12 1.6 12z"/><circle cx="12" cy="12" r="3.1"/></symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M9.8 5.5A9.9 9.9 0 0 1 12 5.2c6.7 0 10.4 6.8 10.4 6.8a18.3 18.3 0 0 1-3.4 4.4M6.2 6.8A18.2 18.2 0 0 0 1.6 12S5.3 18.8 12 18.8a9.9 9.9 0 0 0 4.1-.9"/><path d="M9.8 9.8a3.1 3.1 0 0 0 4.4 4.4"/><path d="M3 3l18 18"/></symbol>
   </svg>
 
 
@@ -178,8 +180,19 @@
 
     <!-- Il segno da fare, centrato e grande  -->
     <div class="prompt">
-      <p class="prompt-eyebrow">Your turn — make this sign</p>
+      <!-- aria-live: sui segni "a memoria" questa riga e' la consegna, ed e'
+           l'unico posto dove si dice che la demo manca di proposito. Cambia
+           solo quando cambia davvero lo stato, non ad ogni step. -->
+      <p class="prompt-eyebrow" aria-live="polite">Your turn — make this sign</p>
       <div class="prompt-row">
+        <!-- Indietro e altoparlante fanno coppia, uno per lato del badge.
+             Fuori dal badge avrebbero spostato il segno dal centro, che e' il
+             punto dove l'occhio entra nella schermata. -->
+        <button id="go-back" class="icon-btn ghost" type="button" disabled
+                title="This is the first sign of the lesson">
+          <svg class="icon"><use href="#i-arrow-left"></use></svg>
+          <span class="sr-only">Go back to the previous sign</span>
+        </button>
         <h2 class="sign-word" id="sign-word">&nbsp;</h2>
         <button id="speak-word" class="icon-btn ghost" type="button" title="Hear the word">
           <svg class="icon"><use href="#i-volume-on"></use></svg>
@@ -196,6 +209,22 @@
           <span class="card-tag">Demo</span>
           <video id="demo-video" loop muted playsinline autoplay preload="auto"></video>
           <p class="demo-missing" id="demo-missing" hidden>No demo for this sign</p>
+
+          <!-- Segni "a memoria" (flag from_memory nel JSON della lezione): il
+               video c'e' ma parte coperto. Questo pannello ne prende il posto
+               invece di lasciare un buco nero, altrimenti la card sembrerebbe
+               rotta e la prova perderebbe senso. Scoprirlo resta sempre
+               possibile: e' una scelta dell'utente, non un blocco. -->
+          <div class="demo-hidden" id="demo-hidden" hidden>
+            <svg class="icon" aria-hidden="true"><use href="#i-eye-off"></use></svg>
+            <p class="dh-title">Demo hidden</p>
+            <p class="dh-text">You have seen this sign before — try it from memory.</p>
+            <button id="demo-reveal" class="btn" type="button">
+              <svg class="icon"><use href="#i-eye"></use></svg>
+              Show me the sign
+            </button>
+          </div>
+
           <div class="demo-controls">
             <button id="demo-play" class="pill-btn" type="button" aria-pressed="false" title="Pause / play (Space)">
               <svg class="icon icon-pause"><use href="#i-pause"></use></svg>
@@ -209,6 +238,12 @@
             <button id="demo-mirror" class="pill-btn" type="button" aria-pressed="false" title="Mirror the demo">
               <svg class="icon"><use href="#i-mirror"></use></svg>
               <span class="sr-only">Mirror the demo</span>
+            </button>
+            <!-- Solo sui segni "a memoria", e solo dopo averli scoperti:
+                 richiudere la demo permette di riprovare senza. -->
+            <button id="demo-hide" class="pill-btn" type="button" hidden title="Hide the demo again">
+              <svg class="icon"><use href="#i-eye-off"></use></svg>
+              <span class="sr-only">Hide the demo again</span>
             </button>
           </div>
         </div>

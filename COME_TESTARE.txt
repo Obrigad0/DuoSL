@@ -105,6 +105,32 @@ DuoSL - come avviare il test in standalone
    Dopo due tentativi non riusciti compare "Skip this sign": serve perche' il
    modello non e' infallibile e un segno che non passa non deve bloccarti.
 
+   TORNARE AL SEGNO PRECEDENTE
+   La freccia a sinistra dentro il badge teal (in coppia con l'altoparlante
+   dall'altro lato) riporta al segno di prima per riprovarlo. Sul primo segno
+   della lezione resta al suo posto ma spenta: sparendo, il badge si
+   accorcerebbe proprio mentre stai leggendo la parola dentro.
+   Da tastiera: freccia sinistra.
+
+   Tornare indietro NON cancella niente: i pallini gia' verdi restano verdi e
+   la libreria dei segni non retrocede mai. Vale anche al contrario: se torni
+   su un segno che avevi saltato e stavolta lo fai bene, il pallino passa da
+   "saltato" a "fatto" e il segno si sposta fra i conosciuti.
+
+   SEGNI "A MEMORIA"
+   Alcuni segni hanno la demo COPERTA: al posto del video trovi "Demo hidden"
+   e il pulsante "Show me the sign". Servono a provare a rifare da solo un
+   segno gia' incontrato prima nella lezione. Sopra la parola l'occhiello
+   cambia in "From memory — no demo this time", cosi' e' chiaro che la demo
+   manca di proposito e non e' un guasto.
+   Scoprirla e' sempre possibile e non costa niente: e' un esercizio, non un
+   blocco. Una volta scoperta compare una quarta pillola sotto al video (occhio
+   sbarrato) per richiuderla e riprovare senza. Anche il tasto R la scopre.
+   Mettere in pausa la lezione non la scopre: sarebbe una scorciatoia.
+   Il flag si mette dove vuoi nella lezione, un segno alla volta: vedi il
+   punto 10. In questa demo ce l'hanno due segni della lezione 4 (il secondo
+   FEEL e il secondo YOU, entrambi ripetizioni di segni gia' visti).
+
    Il pulsante "Voice off / Voice on" in alto a destra accende la lettura del
    segno ad alta voce. Se sul sistema non ci sono voci inglesi installate viene
    usata la voce predefinita (in italiano): pronuncia comunque i nomi dei segni.
@@ -119,7 +145,9 @@ DuoSL - come avviare il test in standalone
    Scorciatoie da tastiera:
      Spazio  pausa/riprendi la demo      V  dettatura vocale on/off
      R       rivedi la demo al rallentatore   D  pannello diagnostica
+             (su un segno "a memoria" la scopre)
      S       salta lo step (quando offerto)   Esc  esci dalla lezione
+     <-      torna al segno precedente
 
 7) LA SCHERMATA DI FREE PRACTICE
    Nessun copione: fai un segno qualunque e la schermata ti dice cosa ha letto.
@@ -218,6 +246,18 @@ DuoSL - come avviare il test in standalone
                  (es. gloss "HOW1" -> display_text "HOW"). E' anche il testo
                  che viene pronunciato dalla dettatura vocale.
      "demo_url": video della demo, servito da lectures/demos/
+     "from_memory": facoltativo, true/false (default false). Su questo singolo
+                 segno la demo parte coperta e l'utente decide se scoprirla:
+                 serve a farlo riprovare a memoria. Si mette su qualunque
+                 segno, ovunque nella lezione, e non tocca gli altri.
+                 Ha senso su un segno gia' incontrato prima nella stessa
+                 lezione: e' li' che chiedere di rifarlo senza video verifica
+                 davvero qualcosa. Senza "demo_url" il flag non ha effetto,
+                 perche' non ci sarebbe niente da scoprire.
+
+                 Esempio:
+                   { "gloss": "FEEL", "demo_url": "/demos/feel.mp4",
+                     "from_memory": true }
 
 11) I VIDEO DELLE DEMO
    Vanno in lectures/demos/ e sono referenziati come /demos/<nome>.mp4

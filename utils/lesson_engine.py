@@ -21,6 +21,12 @@ class LessonStep:
     gloss: str
     display_text: Optional[str] = None
     demo_url: Optional[str] = None
+    # Segno "a memoria": la demo esiste ma parte coperta, e tocca all'utente
+    # decidere se scoprirla. Si mette su un singolo step, ovunque nella
+    # lezione, e non tocca gli altri. Ha senso su un segno gia' incontrato
+    # prima nella stessa lezione: e' li' che chiedere di rifarlo senza video
+    # verifica davvero qualcosa.
+    from_memory: bool = False
 
     def label(self) -> str:
         return self.display_text or self.gloss
@@ -67,6 +73,7 @@ def load_lesson(name: str, gloss_to_index: dict, lectures_dir: str = "lectures")
             gloss=gloss,
             display_text=raw_step.get("display_text"),
             demo_url=raw_step.get("demo_url"),
+            from_memory=bool(raw_step.get("from_memory", False)),
         ))
 
     return Lesson(id=lesson_id, name=raw.get("name", lesson_id), steps=steps)
@@ -81,7 +88,12 @@ def steps_payload(lesson: Lesson) -> list[dict]:
     il video dello step successivo mentre si e' ancora su quello corrente.
     """
     return [
-        {"gloss": s.gloss, "display": s.label(), "demo_url": s.demo_url}
+        {
+            "gloss": s.gloss,
+            "display": s.label(),
+            "demo_url": s.demo_url,
+            "from_memory": s.from_memory,
+        }
         for s in lesson.steps
     ]
 

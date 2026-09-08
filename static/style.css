@@ -104,10 +104,21 @@
          qui arrotondati a 24rem per margine): e' quello che evita lo
          scroll verticale su schermi bassi, dove un semplice 60vh sforava;
        - un tetto assoluto, per non gonfiarsi su monitor molto alti;
-       - la larghezza disponibile: 4/3 (camera) + 0.74 (demo) = 2.07 volte
-         l'altezza della camera, piu' i margini. */
-  --cam-h: max(200px, min(calc(100vh - 24rem), 560px, calc((100vw - 7rem) / 2.14)));
-  --demo-h: calc(var(--cam-h) * .74);
+       - la larghezza disponibile: 4/3 (camera) + --demo-k (demo) volte
+         l'altezza della camera, piu' lo spazio fra le due card.
+
+     --demo-k e' l'UNICO numero da toccare per cambiare quanto e' grande la
+     demo: il limite di larghezza qui sotto si ricalcola da solo. Cambiandone
+     uno solo, su una finestra stretta le due card sborderebbero. */
+  --demo-k: .86;
+  --stage-gap-k: .067;   /* lo spazio fra le card, in altezze di camera */
+
+  --cam-h: max(200px, min(
+    calc(100vh - 24rem),
+    560px,
+    calc((100vw - 7rem) / (1.334 + var(--demo-k) + var(--stage-gap-k)))
+  ));
+  --demo-h: calc(var(--cam-h) * var(--demo-k));
 }
 
 
@@ -531,7 +542,7 @@ button { font: inherit; color: inherit; }
   display: flex;
   align-items: center;
   gap: var(--s-4);
-  padding: var(--s-2) var(--s-3) var(--s-2) var(--s-7);
+  padding: var(--s-2) var(--s-3);
   border-radius: var(--r-pill);
   /* Non piu' chiaro di brand-700: sopra, il bianco scende sotto 4.5:1 e
      resterebbe leggibile solo grazie al corpo grande. */
@@ -549,16 +560,24 @@ button { font: inherit; color: inherit; }
   white-space: nowrap;   /* i gloss sono parole singole: mai due righe */
 }
 
-/* L'altoparlante sta dentro il badge: tondo, su velo chiaro */
-#speak-word {
+/* I due controlli del badge: indietro a sinistra, altoparlante a destra.
+   Tondi, su velo chiaro. Stanno DENTRO perche' fuori avrebbero spostato il
+   segno dal centro, e il centro e' il punto dove l'occhio entra. */
+#go-back, #speak-word {
   flex: none;
   width: 44px; height: 44px;
   border-radius: 50%;
   background: rgba(255, 255, 255, .16);
   color: var(--n-0);
 }
-#speak-word:hover { background: rgba(255, 255, 255, .3); }
-#speak-word .icon { width: 22px; height: 22px; }
+#go-back:hover, #speak-word:hover { background: rgba(255, 255, 255, .3); }
+#go-back .icon, #speak-word .icon { width: 22px; height: 22px; }
+
+/* Sul primo segno resta al suo posto, spento: farlo sparire accorcerebbe il
+   badge proprio mentre l'utente sta leggendo la parola dentro. */
+#go-back:disabled { opacity: .32; cursor: default; }
+#go-back:disabled:hover { background: rgba(255, 255, 255, .16); }
+#go-back:disabled:active { transform: none; }
 
 /* Al cambio step entra con un movimento breve: serve ad accorgersi che lo
    step e' cambiato, non a restare vistoso. */
@@ -755,6 +774,46 @@ button { font: inherit; color: inherit; }
   place-items: center;
   color: var(--stage-fg-dim);
   font-size: var(--t-sm);
+}
+
+/* --- Segni "a memoria": la demo coperta -------------------------------
+   Prende il posto del video invece di lasciare un rettangolo nero: senza
+   niente scritto, una demo mancante si legge come un guasto e l'utente
+   aspetta che compaia. Qui invece la card dice cosa sta succedendo e offre
+   la via d'uscita, che resta sempre aperta. */
+.demo-hidden {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  padding: var(--s-4);
+  text-align: center;
+  background: var(--stage-900);
+  color: var(--stage-fg);
+}
+.demo-hidden > .icon {
+  width: 30px; height: 30px;
+  color: var(--stage-fg-dim);
+}
+.dh-title { font-size: var(--t-md); font-weight: 800; }
+.dh-text {
+  font-size: var(--t-sm);
+  line-height: 1.45;
+  max-width: 24ch;
+  color: var(--stage-fg-dim);
+}
+#demo-reveal { margin-top: var(--s-1); }
+#demo-reveal .icon { width: 16px; height: 16px; }
+
+/* La card della demo e' piccola, e in pausa diventa grande: su una finestra
+   bassa le tre righe non ci starebbero. La frase e' il complemento, il titolo
+   e il pulsante sono l'essenziale, quindi cade per prima lei. */
+@media (max-height: 780px) {
+  .demo-hidden > .icon { width: 24px; height: 24px; }
+  .lesson-stage:not(.is-paused) .dh-text { display: none; }
 }
 
 /* La card demo e' piccola: i controlli si stringono per non occuparne il fondo */
@@ -1662,6 +1721,12 @@ button { font: inherit; color: inherit; }
   --lib-open-w: 356px;
   --lib-w: 0px;
 
+<<<<<<< Updated upstream
+=======
+  /* Sola webcam: 4/3 piu' margine. Con un segno appuntato ci si aggiunge la
+     demo, con la stessa proporzione della lezione (--demo-k). Cambia la
+     classe, non la formula. */
+>>>>>>> Stashed changes
   --stage-ratio: 1.34;
 
   --free-cam-h: max(200px, min(calc(100vh - 15rem), 560px,
@@ -1669,7 +1734,9 @@ button { font: inherit; color: inherit; }
 }
 
 .free-screen.lib-open   { --lib-w: var(--lib-open-w); }
-.free-screen.has-pinned { --stage-ratio: 2.14; }
+.free-screen.has-pinned {
+  --stage-ratio: calc(1.334 + var(--demo-k) + var(--stage-gap-k));
+}
 
 .free-title { flex: 1; min-width: 0; }
 .free-title h1 { font-size: var(--t-lg); font-weight: 800; letter-spacing: -.01em; }
@@ -1691,7 +1758,7 @@ button { font: inherit; color: inherit; }
   justify-content: center;
   gap: var(--s-6);
 
-  --demo-size: calc(var(--free-cam-h) * .74);
+  --demo-size: calc(var(--free-cam-h) * var(--demo-k));
   --cam-size: var(--free-cam-h);
 }
 
@@ -1987,11 +2054,12 @@ button { font: inherit; color: inherit; }
   }
   .demo-card {
     height: auto;
-    width: min(260px, 62vw);
+    width: min(300px, 66vw);
     aspect-ratio: 1 / 1;
     margin-inline: auto;
   }
 
+<<<<<<< Updated upstream
   .step-name { display: none; }
 
   .start-menu-btn { width: 100%; height: 62px; font-size: 1.15rem; }
@@ -2004,6 +2072,13 @@ button { font: inherit; color: inherit; }
 @media (max-height: 700px) {
   .menu-hero { transform: none; }
   .menu-glow { top: 50%; }
+=======
+  .step-name { display: none; }   /* nella barra stretta non ci sta */
+
+  /* Impilata, la card della demo e' larga al massimo 260px: la frase lunga
+     andrebbe su quattro righe e spingerebbe fuori il pulsante. */
+  .dh-text { display: none; }
+>>>>>>> Stashed changes
 }
 
 @media (max-width: 1100px) {
