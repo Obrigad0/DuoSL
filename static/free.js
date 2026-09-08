@@ -31,7 +31,7 @@ const CAMERA_TROUBLE = {
   nocam: {
     icon: '#i-alert',
     title: 'No camera found',
-    text: 'Connect a webcam and try again — sign recognition needs a live video feed.',
+    text: 'Connect a webcam and try again, sign recognition needs a live video feed.',
   },
   busy: {
     icon: '#i-alert',

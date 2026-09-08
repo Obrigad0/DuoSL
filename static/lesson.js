@@ -28,8 +28,8 @@ const CHEAT_CHANCE = 0.5;
  * consegna dell'esercizio. Torna normale appena l'utente scopre il video.
  */
 const EYEBROW = {
-  normal: 'Your turn — make this sign',
-  memory: 'From memory — no demo this time',
+  normal: 'Your turn, make this sign',
+  memory: 'From memory, no demo this time',
 };
 
 const $ = (id) => document.getElementById(id);

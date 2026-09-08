@@ -97,7 +97,7 @@ const menuDebug = {
     const line = $('menu-progress-line');
 
     if (!data) {
-      line.textContent = 'Progress unavailable — is the server running?';
+      line.textContent = 'Progress unavailable, is the server running?';
       return;
     }
 
