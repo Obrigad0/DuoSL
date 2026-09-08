@@ -847,11 +847,6 @@ button { font: inherit; color: inherit; }
   50%      { opacity: .45; }
 }
 
-/* Nessuno scuotimento sull'errore: un tentativo non riconosciuto non e' un
-   fallimento, e far tremare l'immagine dell'utente genera ansia proprio
-   mentre sta cercando di rifare il segno. Il verdetto lo danno colore,
-   glifo e testo, che bastano. */
-
 .cam-badge {
   position: absolute;
   top: var(--s-3); left: var(--s-3);
@@ -979,9 +974,6 @@ button { font: inherit; color: inherit; }
 
 /* ============ 8. LEZIONE — FEEDBACK E DIAGNOSTICA ======================== */
 
-/* Lo spazio del verdetto resta riservato anche quando il verdetto non c'e':
-   un banner che compare accorciando il palco farebbe saltare le card verso
-   l'alto nell'istante peggiore, cioe' mentre l'utente le sta guardando. */
 .feedback-slot {
   flex: none;
   min-height: 78px;
@@ -1018,7 +1010,6 @@ button { font: inherit; color: inherit; }
 .fb-text { flex: 1; font-size: var(--t-md); font-weight: 600; }
 .fb-actions { display: flex; gap: var(--s-2); flex: none; }
 
-/* L'auto-avanzamento si vede scorrere: non "succede e basta" */
 .fb-timer {
   position: absolute;
   left: 0; bottom: 0;
@@ -1030,10 +1021,6 @@ button { font: inherit; color: inherit; }
 .fb-timer.run { animation: fb-timer linear forwards; }
 @keyframes fb-timer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 
-/* --- Diagnostica: fuori dalla vista di chi impara, a portata di chi tara --- */
-/* Sollevato sopra lo spazio riservato al verdetto: il pannello puo' velare un
-   angolo del video (e' uno strumento, si apre di proposito) ma non deve mai
-   coprire il testo del verdetto ne' il pulsante di skip. */
 .debug-panel {
   position: fixed;
   right: var(--s-5);
@@ -1061,8 +1048,6 @@ button { font: inherit; color: inherit; }
 
 .meter { display: flex; align-items: center; gap: var(--s-3); margin-bottom: var(--s-4); }
 
-/* Le due soglie disegnate sopra la barra: tararle diventa visivo invece
-   che a occhio, che e' il punto della sezione 6 di COME_TESTARE.txt. */
 .meter-track {
   position: relative;
   flex: 1;
@@ -1084,8 +1069,6 @@ button { font: inherit; color: inherit; }
   width: 2px;
   background: var(--n-700);
 }
-/* Chip opaco dietro l'etichetta: la barra di riempimento le scorre sotto,
-   e senza fondo il valore diventa illeggibile appena il movimento sale. */
 .meter-mark b {
   position: absolute; top: 3px; left: 3px;
   padding: 1px 4px;
@@ -1131,89 +1114,169 @@ button { font: inherit; color: inherit; }
 
 /* ========== 9. MENU, FREE PRACTICE E LIBRERIA DEI SEGNI ================== */
 
-.menu-page .app-container {
-  max-width: min(1400px, 92vw);
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.menu-page .menu-page-title {
-  text-align: center;
-  font-size: var(--t-3xl);
-  margin-top: 5vh;
-}
-
-.menu-page .menu-layout {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 80px;
-  flex-wrap: wrap;
-  width: 100%;
-}
-
-.menu-page .info-side {
-  flex: 1 1 220px;
-  background: #f0fdfa;
-  border: 1px solid var(--border);
-  border-radius: var(--r-card);
+.menu-page {
+  position: relative;
+  overflow: hidden;
   padding: var(--s-6);
-  box-shadow: var(--sh-1);
 }
-.menu-page .info-title { font-size: 1.4rem; margin-bottom: 10px; }
-.menu-page .info-text { color: var(--n-700); line-height: 1.5; font-size: .95rem; }
 
-.menu-page .center-side {
-  flex: 1 1 280px;
+.menu-glow {
+  position: absolute;
+  z-index: 0;
+  top: 42%; left: 50%;
+  width: min(1100px, 150vw);
+  height: min(1100px, 150vw);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle,
+              rgba(20, 184, 166, .16) 0%,
+              rgba(20, 184, 166, .07) 38%,
+              rgba(20, 184, 166, 0) 68%);
+  pointer-events: none;
+  animation: menu-glow-breathe 8s var(--ease) infinite;
+}
+@keyframes menu-glow-breathe {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50%      { transform: translate(-50%, -50%) scale(1.06); }
+}
+
+.menu-hero {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-.menu-page .menu-subtitle { color: var(--n-700); margin-bottom: var(--s-6); }
-
-.menu-page .menu-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-4);
   width: 100%;
-  max-width: 320px;
+  max-width: 640px;
+  transform: translateY(-8vh);
 }
-.menu-page .menu-buttons button {
-  padding: 14px var(--s-5);
-  border: none;
-  border-radius: var(--r-btn);
-  background: var(--brand-700);
-  color: #f0fdfa;
+
+
+.menu-emblem {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: clamp(320px, 46vw, 560px);
+  height: auto;
+  transform: translate(-50%, -54%);
+  opacity: .08;
+  filter: grayscale(1);
+  pointer-events: none;
+  z-index: -1;
+}
+
+
+.menu-kicker {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 18px;
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  border: 1.5px solid var(--brand-300);
+  color: var(--brand-800);
+  font-size: var(--t-sm);
   font-weight: 700;
-  font-size: 1.05rem;
-  cursor: pointer;
-  transition: background var(--dur) var(--ease), transform 50ms var(--ease);
+  letter-spacing: .02em;
+  box-shadow: var(--sh-1);
+  animation: menu-in .6s var(--ease) both;
 }
-.menu-page .menu-buttons button:hover  { background: var(--brand-800); }
-.menu-page .menu-buttons button:active { transform: scale(.98); }
 
-.menu-page .logo-side { flex: 1 1 220px; display: flex; justify-content: center; align-items: center; }
-.menu-page .logo-img { max-width: 100%; height: auto; max-height: 220px; }
+.menu-page-title {
+  margin-top: var(--s-5);
+  font-size: clamp(3.4rem, 9vw, 6.4rem);
+  font-weight: 800;
+  letter-spacing: -.04em;
+  line-height: 1;
+  background: linear-gradient(135deg, var(--brand-600), var(--brand-900));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: menu-in .6s var(--ease) .06s both;
+}
 
-/* --- Pannello debug del menu: azzera la memoria dei progressi ------------
-   Sottotono di proposito (stessa convenzione del pannello diagnostica in
-   lezione): e' uno strumento, non una funzione dell'app. */
+.menu-page-tagline {
+  margin-top: var(--s-4);
+  max-width: 46ch;
+  font-size: clamp(1.05rem, 1.8vw, 1.3rem);
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--text-soft);
+  animation: menu-in .6s var(--ease) .12s both;
+}
 
-.menu-debug {
+.start-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-3);
   margin-top: var(--s-7);
+  height: 72px;
+  padding: 0 var(--s-9);
+  border: none;
+  border-radius: var(--r-pill);
+  background: linear-gradient(135deg, var(--brand-700), var(--brand-900));
+  color: var(--n-0);
+  font-weight: 800;
+  font-size: 1.35rem;
+  letter-spacing: .01em;
+  cursor: pointer;
+  box-shadow: 0 0 0 5px rgba(255, 255, 255, .65), var(--sh-3);
+  transition: background var(--dur) var(--ease),
+              transform var(--dur-fast) var(--ease),
+              box-shadow var(--dur) var(--ease);
+  animation: menu-in .6s var(--ease) .2s both;
+}
+.start-menu-btn .icon { width: 24px; height: 24px; stroke-width: 2.4; }
+.start-menu-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, .8), var(--sh-3);
+}
+.start-menu-btn:active { transform: translateY(0) scale(.98); }
+
+
+.menu-features {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--s-3) var(--s-6);
+  margin-top: var(--s-8);
+  animation: menu-in .6s var(--ease) .28s both;
+}
+.menu-features li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--text-soft);
+}
+.menu-features .icon {
+  width: 19px; height: 19px;
+  color: var(--brand-600);
+}
+
+@keyframes menu-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* --- Pannello debug del menu ------------ */
+
+
+.menu-debug-corner {
+  position: fixed;
+  z-index: 2;
+  right: var(--s-5);
+  bottom: var(--s-5);
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-end;
   gap: var(--s-3);
-  width: 100%;
-  max-width: 320px;
 }
 
 .menu-debug-panel {
-  width: 100%;
+  width: 300px;
+  max-width: calc(100vw - var(--s-6) * 2);
   display: flex;
   flex-direction: column;
   gap: var(--s-3);
@@ -1221,11 +1284,11 @@ button { font: inherit; color: inherit; }
   border: 1px solid var(--border);
   border-radius: var(--r-card);
   background: var(--surface);
-  box-shadow: var(--sh-1);
+  box-shadow: var(--sh-3);
   text-align: left;
+  animation: dbg-in var(--dur) var(--ease);
 }
 
-/* I conteggi sono la prova che il reset ha fatto qualcosa: non decorativi. */
 .dbg-progress { font-size: var(--t-sm); color: var(--text-soft); line-height: 1.6; }
 .dbg-progress b { color: var(--text); font-variant-numeric: tabular-nums; }
 
@@ -1234,9 +1297,6 @@ button { font: inherit; color: inherit; }
 
 .dbg-actions { display: flex; flex-direction: column; gap: var(--s-2); }
 
-/* .btn.subtle nasce per stare su fondi gia' colorati: e' un velo scuro con
-   testo bianco. Qui il pannello e' bianco, e cosi' com'e' diventava testo
-   chiaro su fondo chiaro. Nel pannello prende un contorno in tinta. */
 .menu-debug-panel .btn.subtle {
   background: var(--surface);
   border: 1px solid var(--brand-300);
@@ -1256,23 +1316,7 @@ button { font: inherit; color: inherit; }
 .btn.danger .icon { width: 16px; height: 16px; }
 
 
-/* ============= SCELTA LEZIONE: IL PERCORSO ==============================
-   Un percorso invece di una lista. Le lezioni hanno un ordine e si sbloccano
-   l'una con l'altra: una fila di bottoni tutti uguali non lo diceva, e non
-   dava alcun senso di avanzamento fra una sessione e l'altra.
-
-   Quattro segnali distinti, ognuno su un canale suo, perche' non si
-   confondano fra loro:
-     dove sei stato   -> spunta verde sul nodo
-     dove devi andare -> alone ambra sul prossimo
-     cosa hai scelto  -> l'omino in piedi sul nodo
-     cosa non c'e'    -> cerchi tratteggiati che sfumano, in fondo al percorso
-
-   TUTTA la scala dipende da --disc, che imposta lessons.js in base allo
-   spazio disponibile: un solo numero governa dischi, icone, testi, anelli e
-   tratteggio, cosi' la pagina cresce sui monitor grandi e si stringe su
-   quelli piccoli restando in proporzione.
-*/
+/* ============= SCELTA LEZIONE: IL PERCORSO ============================== */
 
 .path-screen {
   flex-direction: column;
@@ -1284,7 +1328,7 @@ button { font: inherit; color: inherit; }
   padding: var(--s-5) var(--s-6) var(--s-6);
   overflow-x: clip;
 
-  --disc: 118px;                        /* valore iniziale: poi lo scrive il JS */
+  --disc: 118px;
   --disc-r: calc(var(--disc) / 2);
 }
 
@@ -1292,8 +1336,6 @@ button { font: inherit; color: inherit; }
 .path-title h1 { font-size: var(--t-xl); font-weight: 800; letter-spacing: -.02em; }
 .path-title p  { font-size: var(--t-sm); color: var(--text-mute); }
 
-/* Il percorso e' quasi sempre piu' largo della finestra — ci sono anche le
-   lezioni future — quindi scorre in orizzontale invece di stringersi. */
 .path-scroll {
   flex: 1;
   min-height: 0;
@@ -1302,8 +1344,6 @@ button { font: inherit; color: inherit; }
   overflow-x: auto;
   overflow-y: hidden;
 
-  /* Barra di scorrimento discreta e in tinta: quella di sistema tagliava in
-     due il disegno delle onde. */
   scrollbar-width: thin;
   scrollbar-color: var(--brand-200) transparent;
 }
@@ -1323,10 +1363,8 @@ button { font: inherit; color: inherit; }
 .path-canvas {
   position: relative;
   flex: none;
-  margin-inline: auto;   /* centrato finche' ci sta tutto */
+  margin-inline: auto;
 }
-
-/* --- La linea tratteggiata --- */
 
 .path-lines {
   position: absolute;
@@ -1341,23 +1379,12 @@ button { font: inherit; color: inherit; }
   stroke-linecap: round;
   stroke-dasharray: calc(var(--disc) * .185) calc(var(--disc) * .163);
 }
-/* Il tratto che porta a una lezione ancora chiusa e' grigio: il colore dice
-   fin dove si puo' arrivare, prima ancora di guardare i lucchetti. */
 .path-lines path.to-locked { stroke: var(--n-300); }
-/* Verso le lezioni future il tratteggio sbiadisce insieme a loro. */
 .path-lines path.to-soon { stroke: var(--n-200); }
 
-/* La strada oltre l'ultimo cerchio: il colore lo da' il gradiente costruito
-   in lessons.js, qui si dichiarano solo i due capi. Sfuma invece di
-   fermarsi netta, altrimenti sembrerebbe una linea tagliata male. */
-/* Lo stroke va dichiarato QUI e non come attributo sull'elemento: una
-   regola CSS batte sempre un attributo di presentazione, e .path-lines path
-   qui sopra avrebbe ridipinto la coda di teal pieno. */
 .path-lines path.path-tail { stroke: url(#path-tail-fade); }
 .path-lines .tail-start { stop-color: var(--n-300); stop-opacity: 1; }
 .path-lines .tail-end   { stop-color: var(--n-300); stop-opacity: 0; }
-
-/* --- I nodi --- */
 
 .path-node {
   position: absolute;
@@ -1395,12 +1422,6 @@ button { font: inherit; color: inherit; }
 .path-node:active .node-disc { transform: scale(.97); }
 .path-node[aria-pressed="true"] .node-disc { transform: scale(1.08); box-shadow: var(--sh-3); }
 
-/* Il nome su una pastiglia chiara: sotto ci passa il disegno delle onde, e
-   il testo nudo ci si perdeva sopra.
-
-   Sta VICINO al disco, e si alza solo per fare posto alla barca quando
-   attracca. Tenerlo sempre alto lasciava un buco fra nome e cerchio su tutti
-   i nodi che la barca non stava toccando. */
 .node-name {
   position: absolute;
   bottom: calc(100% + var(--disc) * .17);
@@ -1418,8 +1439,6 @@ button { font: inherit; color: inherit; }
   letter-spacing: -.01em;
   color: var(--brand-900);
 }
-/* Il free practice ha il nome SOTTO, quindi la barca non gli sta mai fra i
-   piedi: escluso dal sollevamento. */
 .path-node[aria-pressed="true"]:not(.free-node) .node-name {
   bottom: calc(100% + var(--disc) * .58);
 }
@@ -1435,8 +1454,6 @@ button { font: inherit; color: inherit; }
   font-variant-numeric: tabular-nums;
 }
 
-/* Stato: fatta / prossima / chiusa / in arrivo */
-
 .path-node[data-state="next"] .node-disc { background: var(--brand-600); }
 
 .path-node[data-state="locked"] { cursor: default; }
@@ -1444,9 +1461,6 @@ button { font: inherit; color: inherit; }
 .path-node[data-state="locked"] .node-num  { color: var(--n-400); }
 .path-node[data-state="locked"]:hover .node-disc { transform: none; }
 
-/* Le lezioni che in questa demo non esistono ancora: cerchio vuoto e
-   tratteggiato, e via via piu' sbiadito. Dicono "il percorso continua"
-   senza fingere di essere una porta che si puo' aprire. */
 .path-node[data-state="soon"] { cursor: default; opacity: var(--fade, 1); }
 .path-node[data-state="soon"] .node-disc {
   background: transparent;
@@ -1458,9 +1472,6 @@ button { font: inherit; color: inherit; }
 .path-node[data-state="soon"] .node-num { color: var(--n-300); }
 .path-node[data-state="soon"]:hover .node-disc { transform: none; }
 
-/* Alone del prossimo: e' un anello STACCATO dal disco, non un bordo, cosi'
-   non cambia la dimensione del cerchio e si legge come un'indicazione
-   esterna invece che come un altro stato del nodo. */
 .node-ring {
   position: absolute;
   inset: calc(var(--disc) * -.095);
@@ -1474,8 +1485,6 @@ button { font: inherit; color: inherit; }
   opacity: 1;
   animation: next-pulse 2.6s var(--ease) infinite;
 }
-/* Bussare su un nodo che non si apre: l'anello lampeggia una volta, in
-   grigio. Niente scossoni: dire "non ancora" non deve mettere ansia. */
 .path-node.knock .node-ring {
   opacity: 1;
   border-color: var(--n-400);
@@ -1502,19 +1511,11 @@ button { font: inherit; color: inherit; }
 }
 .path-node[data-state="done"] .node-check { display: grid; }
 
-/* --- Free practice: fuori dal percorso, di proposito ---------------------
-   Non e' una lezione e non deve sembrarlo: sfondo piu' vivo, un alone che
-   respira e tre scintille sfasate. E' l'unico nodo che si muove da solo, ed
-   e' cosi' che si fa notare senza dover gridare. */
-
 .free-node .node-disc {
   background: linear-gradient(145deg, var(--brand-400), var(--brand-600) 52%, var(--brand-800));
 }
 .free-node .node-disc .icon { width: calc(var(--disc) * .50); height: calc(var(--disc) * .50); }
 
-/* Il faro spunta da dietro il disco, spostato di lato: la barca, quando
-   attracca, gli si sovrappone senza coprirlo. Sta in tema con le onde in
-   fondo alla pagina, ed e' l'unica cosa "disegnata" della schermata. */
 .node-lighthouse {
   position: absolute;
   z-index: 0;
@@ -1527,7 +1528,6 @@ button { font: inherit; color: inherit; }
   filter: drop-shadow(0 2px 4px rgba(2, 6, 23, .12));
 }
 
-/* Nome sotto e non sopra: sopra ci sono le scintille. */
 .free-node .node-name {
   bottom: auto;
   top: calc(100% + var(--disc) * .10);
@@ -1550,9 +1550,6 @@ button { font: inherit; color: inherit; }
   animation: free-breathe 5.5s var(--ease) infinite;
 }
 
-
-/* --- L'omino --- */
-
 .path-avatar {
   position: absolute;
   left: 0; top: 0;
@@ -1560,9 +1557,6 @@ button { font: inherit; color: inherit; }
   pointer-events: none;
   transition: transform 430ms var(--ease-back);
 }
-/* Lo scafo della barca sta al 92% dell'altezza del disegno, non in fondo:
-   il -92% invece del solito -100% lo fa appoggiare sul bordo del disco
-   invece di lasciarlo sospeso sopra. */
 .path-avatar {
   transform: translate(calc(var(--x) - 50%), calc(var(--y) - var(--disc-r) - 92%));
 }
@@ -1570,8 +1564,6 @@ button { font: inherit; color: inherit; }
   display: block;
   width: calc(var(--disc) * .58);
   height: auto;
-  /* Un'ombra corta: la stacca dal disco su cui e' appoggiata e da' l'idea
-     che ci sia posata sopra invece che disegnata sopra. */
   filter: drop-shadow(0 2px 3px rgba(2, 6, 23, .28));
 }
 .avatar-inner { display: block; transform-origin: 50% 100%; }
@@ -1584,7 +1576,6 @@ button { font: inherit; color: inherit; }
   60%  { transform: translateY(-16px) scaleY(1.02); }
   100% { transform: translateY(0)     scaleY(1); }
 }
-/* "Entra" nel cerchio: si accovaccia un attimo e sprofonda nel disco. */
 @keyframes avatar-dive {
   0%   { transform: translateY(0)    scale(1);   opacity: 1; }
   26%  { transform: translateY(-9px) scale(1.05); opacity: 1; }
@@ -1603,18 +1594,14 @@ button { font: inherit; color: inherit; }
   50%      { transform: translate(-50%, -50%) scale(1.06); opacity: 1; }
 }
 
-/* --- Il pulsante di avvio --- */
-
 .path-foot {
   flex: none;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--s-2);
-  padding-bottom: var(--s-5);   /* staccato dal bordo, non incollato */
+  padding-bottom: var(--s-5);
 }
-/* Altezza riservata: il messaggio compare e sparisce, il pulsante non si
-   sposta mentre lo stai per premere. */
 .path-hint {
   min-height: 22px;
   font-size: var(--t-sm);
@@ -1631,9 +1618,6 @@ button { font: inherit; color: inherit; }
   padding: 0 var(--s-9);
   border: 0;
   border-radius: var(--r-pill);
-  /* Piu' scuro di prima: sopra le onde chiare in fondo alla pagina il teal
-     medio si mimetizzava. L'anello bianco lo ritaglia dallo sfondo senza
-     uscire dalla palette. */
   background: linear-gradient(135deg, var(--brand-700), var(--brand-900));
   color: var(--n-0);
   font-size: 1.35rem;
@@ -1655,10 +1639,7 @@ button { font: inherit; color: inherit; }
 .start-btn .icon { width: 24px; height: 24px; stroke-width: 2.4; margin-left: 2px; }
 
 
-/* ======================= FREE PRACTICE ==================================
-   Stessa lingua della lezione. Due modi: sola webcam, oppure webcam piu'
-   la demo di un segno appuntato dalla libreria - e in quel caso lo stesso
-   rapporto di dimensioni della lezione (demo al 74%, webcam dominante). */
+/* ======================= FREE PRACTICE ================================== */
 
 .free-screen {
   flex-direction: column;
@@ -1673,29 +1654,14 @@ button { font: inherit; color: inherit; }
               rgba(241, 245, 249, .82) 70%,
               rgba(241, 245, 249, .55) 100%);
 
-  /* Altezza DEFINITA, non solo minima: e' cio' che permette alla libreria di
-     scorrere al proprio interno. Con `min-height` la colonna cresceva col
-     contenuto, `flex:1` su .free-body si risolveva contro un'altezza
-     indefinita e una libreria piena allungava l'intera pagina. */
   height: 100vh;
   min-height: 100vh;
 
-  /* A libreria chiusa il pannello e' largo zero, ma i suoi figli restano a
-     356px: il suo overflow:hidden li nasconde alla vista e NON alla pagina,
-     che si ritrovava 274px di scorrimento orizzontale. "clip" taglia davvero
-     e, a differenza di hidden, non forza l'altro asse a scorrere. Sotto i
-     1100px il pannello e' position:fixed e quindi non viene tagliato: e'
-     proprio li' che deve poter sovrapporsi. */
   overflow-x: clip;
 
-  /* La libreria RESTRINGE il palco invece di coprirlo: la sua larghezza entra
-     nel calcolo dell'altezza della camera, cosi' aprendola le card rimpiccio-
-     liscono con la stessa transizione invece di finire sotto il pannello. */
   --lib-open-w: 356px;
   --lib-w: 0px;
 
-  /* 1.34 = sola webcam (4/3 piu' margine); 2.14 = demo + webcam, come in
-     lezione. Cambia la classe, non la formula. */
   --stage-ratio: 1.34;
 
   --free-cam-h: max(200px, min(calc(100vh - 15rem), 560px,
@@ -1721,7 +1687,7 @@ button { font: inherit; color: inherit; }
   flex: 1;
   min-width: 0;
   display: flex;
-  align-items: center;         /* la demo sta a meta' altezza della webcam */
+  align-items: center;
   justify-content: center;
   gap: var(--s-6);
 
@@ -1731,8 +1697,6 @@ button { font: inherit; color: inherit; }
 
 .free-stage .you-col { gap: var(--s-4); align-items: center; }
 
-/* Pulsante per staccare il segno appuntato: sta sulla card, non sotto, cosi'
-   non ruba altezza al palco. */
 .demo-close {
   position: absolute;
   top: var(--s-2); right: var(--s-2);
@@ -1746,16 +1710,9 @@ button { font: inherit; color: inherit; }
 .demo-close:focus-visible { opacity: 1; }
 .demo-close:hover { background: rgba(2, 6, 23, .78); }
 
-
-/* --- Il segno riconosciuto ---------------------------------------------
-   E' il risultato, non il compito: stesso trattamento del prompt in lezione
-   ma sotto la webcam, dove l'occhio arriva appena finito il gesto. */
-
 .result {
   width: calc(var(--cam-size) * 4 / 3);
   max-width: 100%;
-  /* Mai comprimibile: e' l'altezza della camera ad adattarsi allo spazio,
-     non la parola riconosciuta a rimpicciolirsi su finestre basse. */
   flex: none;
   padding: var(--s-3) var(--s-5) 14px;
   border: 1px solid transparent;
@@ -1767,8 +1724,6 @@ button { font: inherit; color: inherit; }
               background var(--dur) var(--ease);
 }
 
-/* Prima del primo riconoscimento non c'e' niente da annunciare: la card resta
-   in sordina invece di gridare uno stato vuoto. */
 .result[data-state="empty"] {
   background: var(--surface);
   border-color: var(--border);
@@ -1805,9 +1760,6 @@ button { font: inherit; color: inherit; }
 }
 #free-speak:hover { background: rgba(255, 255, 255, .3); }
 
-/* Piccola e chiamata "confidence": e' il softmax del classificatore, non e'
-   calibrato e resta alto anche quando sbaglia. Darle risalto insegnerebbe a
-   fidarsene piu' di quanto meriti. */
 .result-conf {
   display: flex;
   align-items: center;
@@ -1834,11 +1786,6 @@ button { font: inherit; color: inherit; }
 }
 .conf-value { font-variant-numeric: tabular-nums; font-weight: 700; opacity: .9; }
 
-
-/* --- Libreria dei segni -------------------------------------------------
-   Complementary, non modale: la pagina sotto resta usabile mentre e' aperta,
-   che e' il motivo per cui e' un drawer e non una finestra. */
-
 .library {
   flex: none;
   width: var(--lib-w);
@@ -1853,12 +1800,9 @@ button { font: inherit; color: inherit; }
   min-height: 0;
   transition: width var(--dur-slow) var(--ease), opacity var(--dur) var(--ease);
 }
-/* A larghezza zero il bordo si vedrebbe comunque come una riga di 2px */
 .free-screen:not(.lib-open) .library { border-width: 0; }
 .free-screen.lib-open .library { opacity: 1; }
 
-/* Larghezza fissa ai figli: senza, durante la transizione il contenuto si
-   riflowa ad ogni frame e il testo balla. */
 .lib-head, .lib-filters { flex: none; width: var(--lib-open-w); }
 .lib-body { flex: 1; min-height: 0; width: var(--lib-open-w); overflow-y: auto; overscroll-behavior: contain; }
 
@@ -1933,9 +1877,6 @@ button { font: inherit; color: inherit; }
 .lib-thumb {
   position: relative;
   aspect-ratio: 1 / 1;
-  /* Chiaro finche' non c'e' un video: venticinque quadrati neri in colonna
-     pesavano piu' dei nomi, che sono l'informazione. Il fondo scuro arriva
-     insieme al filmato, dove serve davvero a farlo risaltare. */
   background: var(--n-100);
 }
 .lib-thumb video {
@@ -1947,8 +1888,6 @@ button { font: inherit; color: inherit; }
   transition: opacity var(--dur) var(--ease);
 }
 .lib-card.is-playing .lib-thumb video { opacity: 1; }
-/* Il video parte solo all'hover: fino ad allora la card mostra questo, e
-   nessuno dei 25 mp4 viene scaricato. */
 .lib-thumb .thumb-idle {
   position: absolute;
   inset: 0;
@@ -1974,7 +1913,6 @@ button { font: inherit; color: inherit; }
 .lib-card[data-status="known"]  .lib-badge { color: var(--ok-600); }
 .lib-card[data-status="review"] .lib-badge { color: var(--warn-600); }
 
-/* Si incontra subito dopo un reset: va progettato, non lasciato bianco. */
 .lib-empty {
   padding: var(--s-8) var(--s-5);
   text-align: center;
@@ -1985,7 +1923,6 @@ button { font: inherit; color: inherit; }
 .lib-empty .icon { width: 34px; height: 34px; color: var(--n-300); margin-bottom: var(--s-3); }
 .lib-empty strong { display: block; color: var(--text-soft); margin-bottom: 6px; }
 
-/* Contatore sul pulsante della barra */
 .chip-count {
   min-width: 21px; height: 21px;
   padding: 0 6px;
@@ -2004,9 +1941,6 @@ button { font: inherit; color: inherit; }
 }
 .chip-btn[aria-expanded="true"] .chip-count { background: rgba(255, 255, 255, .24); color: var(--n-0); }
 
-/* La libreria non e' un interruttore come gli altri: e' meta' del contenuto
-   della schermata, e da chiusa in stile neutro finiva in secondo piano.
-   Resta piena anche chiusa, e da aperta scurisce di un gradino. */
 #free-library {
   background: var(--brand-700);
   border-color: var(--brand-700);
@@ -2020,8 +1954,6 @@ button { font: inherit; color: inherit; }
   border-color: var(--brand-900);
 }
 
-/* Il chip "quiet" resta sottotono anche da aperto: e' uno strumento, e il
-   teal e' riservato alle funzioni della pratica. */
 .chip-btn.quiet[aria-expanded="true"] {
   background: var(--n-800);
   border-color: var(--n-800);
@@ -2031,8 +1963,6 @@ button { font: inherit; color: inherit; }
 
 /* ============ 10. RESPONSIVE E PREFERENZE DI MOVIMENTO =================== */
 
-/* Sotto questa soglia le due card affiancate diventano troppo piccole per
-   distinguere una configurazione della mano: si impilano. */
 @media (max-width: 900px) {
   .lesson-screen { padding: var(--s-4) var(--s-4) var(--s-6); }
 
@@ -2047,14 +1977,9 @@ button { font: inherit; color: inherit; }
   .sign-word { font-size: clamp(2rem, 9vw, 2.6rem); }
   .feedback-slot { min-height: 0; }
 
-  /* Impilate, la webcam va sopra: resta lei l'elemento principale */
   .you-col  { order: 1; }
   .demo-col { order: 2; }
 
-  /* Impilate, le card lasciano decidere l'altezza alla larghezza. Serve pero'
-     aspect-ratio: dentro la card della webcam ogni figlio e' in posizione
-     assoluta, quindi con height:auto e nulla nel flusso normale la card
-     collassava a zero e il video spariva. */
   .cam-card {
     height: auto;
     width: 100%;
@@ -2067,11 +1992,20 @@ button { font: inherit; color: inherit; }
     margin-inline: auto;
   }
 
-  .step-name { display: none; }   /* nella barra stretta non ci sta */
+  .step-name { display: none; }
+
+  .start-menu-btn { width: 100%; height: 62px; font-size: 1.15rem; }
+  .menu-features { gap: var(--s-3) var(--s-5); margin-top: var(--s-6); }
+  .menu-emblem { width: 70vw; }
+  .menu-hero { transform: translateY(-2vh); }
+  .menu-glow { top: 46%; }
 }
 
-/* Sotto questa larghezza restringere il palco renderebbe la webcam inutile:
-   la libreria torna a sovrapporsi, e il palco resta della sua misura. */
+@media (max-height: 700px) {
+  .menu-hero { transform: none; }
+  .menu-glow { top: 50%; }
+}
+
 @media (max-width: 1100px) {
   .free-screen.lib-open { --lib-w: 0px; }
 
@@ -2092,12 +2026,8 @@ button { font: inherit; color: inherit; }
 }
 
 @media (max-width: 900px) {
-  /* Impilate, le due card chiedono piu' della finestra: qui la pagina deve
-     tornare a poter crescere, ed e' giusto che scorra. */
   .free-screen { padding: var(--s-4) var(--s-4) var(--s-6); height: auto; }
 
-  /* La scala dei nodi la decide lessons.js dallo spazio disponibile: qui
-     restano solo i margini della pagina e il pulsante. */
   .path-screen { padding: var(--s-4); }
   .start-btn { height: 62px; padding: 0 var(--s-7); font-size: 1.12rem; }
   .start-btn .icon { width: 21px; height: 21px; }
@@ -2109,8 +2039,6 @@ button { font: inherit; color: inherit; }
   .result { width: 100%; }
 }
 
-/* Finestra bassa: la corsia del percorso e' gia' governata dal JS, qui si
-   recupera altezza sulle due fasce fisse sopra e sotto. */
 @media (max-height: 660px) {
   .path-screen { padding: var(--s-3) var(--s-5) var(--s-4); gap: var(--s-2); }
   .path-title h1 { font-size: var(--t-lg); }
@@ -2121,14 +2049,11 @@ button { font: inherit; color: inherit; }
   .start-btn .icon { width: 20px; height: 20px; }
 }
 
-@media (max-width: 800px) {
-  .menu-page .menu-layout { flex-direction: column; }
-  .menu-page .center-side { order: -1; }
+@media (max-width: 380px) {
+  .menu-features { flex-direction: column; align-items: center; gap: var(--s-3); }
 }
 
 @media (max-width: 560px) {
-  /* Su schermo stretto il verdetto sta subito sotto le card: il pannello si
-     sposta in alto, altrimenti gli finisce sopra. */
   .debug-panel {
     right: var(--s-3); left: var(--s-3);
     top: 64px; bottom: auto;
@@ -2138,7 +2063,6 @@ button { font: inherit; color: inherit; }
   .fb-text { flex: 1 1 100%; order: -1; }
 }
 
-/* Restano colore e glifo, che sono l'informazione; sparisce il movimento. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: .01ms !important;

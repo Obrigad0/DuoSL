@@ -33,9 +33,7 @@
     <symbol id="i-heart" viewBox="0 0 24 24"><path d="M20.8 5.7a5 5 0 0 0-7.1 0L12 7.4l-1.7-1.7a5 5 0 0 0-7.1 7.1l8.8 8.8 8.8-8.8a5 5 0 0 0 0-7.1z"/></symbol>
     <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10.5" width="16" height="10.5" rx="2.4"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></symbol>
     <symbol id="i-infinity" viewBox="0 0 24 24"><path d="M18.2 8c5.1 0 5.1 8 0 8-5.1 0-7.1-8-12.7-8-4.6 0-4.6 8 0 8 5.6 0 7.6-8 12.7-8z"/></symbol>
-    <!-- Sagome piene: l'omino che sta sul nodo scelto e la palma dietro al
-         nodo del free practice. Disegnate qui e non scaricate da internet,
-         cosi' seguono currentColor e l'app resta senza risorse esterne. -->
+
     <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.9" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.9" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.9" fill="currentColor" stroke="none"/></symbol>
     <symbol id="i-library" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
     <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></symbol>
@@ -44,87 +42,77 @@
 
 
   <!-- ===================== MENU INIZIALE ===================== -->
-  <!-- Fuori ambito in questo passaggio: markup invariato. -->
+
   <div id="menu-screen" class="screen menu-page">
-    <div class="app-container">
 
-      <h1 class="menu-page-title">DuoSL – Sign Language Practice </h1>
+    <div class="menu-glow" aria-hidden="true"></div>
 
-      <div class="menu-layout">
-        <div class="info-side">
-          <h2 class="info-title">What's DuoSL</h2>
-          <p class="info-text">
-            DuoSL is an app for practicing sign language interactively:
-            step-by-step guided lessons or free practice
-            in front of the webcam, with real-time sign recognition.
-            <br><br>
-            Under the hood, DuoSL leverages state-of-the-art LLM-based
-            models, specifically trained to recognize hand gestures and
-            signs in real time, turning your webcam into a smart,
-            interactive sign language tutor.
-          </p>
+    <div class="menu-hero">
+      <img src="/static/sign-language.png" alt="" class="menu-emblem" aria-hidden="true" loading="lazy" />
+
+      <p class="menu-kicker">Sign language, made simple</p>
+      <h1 class="menu-page-title">DuoSL</h1>
+      <p class="menu-page-tagline">
+        A friendly way to learn American Sign Language. Guided lessons
+        or free practice, right from your webcam.
+      </p>
+
+      <button id="start-btn" class="start-menu-btn">
+        Start
+        <svg class="icon"><use href="#i-arrow-right"></use></svg>
+      </button>
+
+      <ul class="menu-features">
+        <li>
+          <svg class="icon"><use href="#i-hand"></use></svg>
+          Step-by-step guided lessons
+        </li>
+        <li>
+          <svg class="icon"><use href="#i-camera"></use></svg>
+          Instant feedback from your webcam
+        </li>
+        <li>
+          <svg class="icon"><use href="#i-infinity"></use></svg>
+          Practice anytime, at your own pace
+        </li>
+      </ul>
+    </div>
+
+    <div class="menu-debug-corner">
+      <button id="menu-debug-toggle" class="chip-btn quiet" type="button"
+              aria-expanded="false" aria-controls="menu-debug-panel">
+        <svg class="icon"><use href="#i-sliders"></use></svg>
+        <span class="chip-label">Debug</span>
+      </button>
+
+      <div class="menu-debug-panel" id="menu-debug-panel" hidden>
+
+        <p class="dbg-progress" id="menu-progress-line">Reading progress…</p>
+        <div class="dbg-actions" id="menu-dbg-actions">
+          <button id="menu-fill" class="btn subtle" type="button">
+            <svg class="icon"><use href="#i-check"></use></svg>
+            Fill progress
+          </button>
+          <button id="menu-reset" class="btn danger" type="button">
+            <svg class="icon"><use href="#i-trash"></use></svg>
+            Reset progress
+          </button>
         </div>
 
-        <div class="center-side">
-          <p class="menu-subtitle">Choose your mode to start practicing sign language</p>
-          <div class="menu-buttons">
-            <button id="lessons-btn">Lessons</button>
-            <button id="free-btn">Free Practice</button>
+        <div class="dbg-confirm" id="menu-confirm" hidden>
+          <p id="menu-confirm-text"></p>
+          <div class="dbg-confirm-actions">
+            <button id="menu-confirm-yes" class="btn danger" type="button">Yes</button>
+            <button id="menu-confirm-no" class="btn subtle" type="button">Cancel</button>
           </div>
-
-          <!-- Strumento, non funzione: stile deliberatamente sottotono, la
-               stessa convenzione del pannello diagnostica in lezione. -->
-          <div class="menu-debug">
-            <button id="menu-debug-toggle" class="chip-btn quiet" type="button"
-                    aria-expanded="false" aria-controls="menu-debug-panel">
-              <svg class="icon"><use href="#i-sliders"></use></svg>
-              <span class="chip-label">Debug</span>
-            </button>
-
-            <div class="menu-debug-panel" id="menu-debug-panel" hidden>
-              <!-- I conteggi non sono decorativi: sono la prova che il reset
-                   ha davvero fatto qualcosa. -->
-              <p class="dbg-progress" id="menu-progress-line">Reading progress…</p>
-
-              <!-- Due comandi, una sola conferma: entrambi sovrascrivono
-                   quello che c'e', quindi passano dallo stesso passaggio. -->
-              <div class="dbg-actions" id="menu-dbg-actions">
-                <button id="menu-fill" class="btn subtle" type="button">
-                  <svg class="icon"><use href="#i-check"></use></svg>
-                  Fill progress
-                </button>
-                <button id="menu-reset" class="btn danger" type="button">
-                  <svg class="icon"><use href="#i-trash"></use></svg>
-                  Reset progress
-                </button>
-              </div>
-
-              <div class="dbg-confirm" id="menu-confirm" hidden>
-                <p id="menu-confirm-text"></p>
-                <div class="dbg-confirm-actions">
-                  <button id="menu-confirm-yes" class="btn danger" type="button">Yes</button>
-                  <button id="menu-confirm-no" class="btn subtle" type="button">Cancel</button>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
-
-        <div class="logo-side">
-          <!-- lazy: entrando direttamente in una lezione il menu resta nascosto,
-               e senza questo il logo verrebbe scaricato comunque -->
-          <img src="/static/sign-language.png" alt="DuoSL sign logo" class="logo-img" loading="lazy" />
-        </div>
-
       </div>
     </div>
+
   </div>
 
   <!-- ===================== SCELTA LEZIONE ===================== -->
-  <!-- Un percorso invece di una lista: le lezioni hanno un ordine e si
-       sbloccano l'una con l'altra, e una fila di bottoni non lo diceva.
-       I nodi li costruisce lessons.js dai dati di /api/progress: aggiungere
-       una lezione non richiede di toccare questo file. -->
+
   <div id="lectures-screen" class="screen path-screen hidden">
 
     <header class="path-bar">
@@ -173,8 +161,6 @@
         <span class="progress-count" id="lesson-count" aria-live="polite"></span>
       </div>
 
-      <!-- Etichettati, non solo icone: da soli i simboli non dicevano ne'
-           che cosa fanno ne' se sono accesi. -->
       <div class="bar-actions">
         <button id="voice-toggle" class="chip-btn" type="button" aria-pressed="false"
                 title="Read the sign aloud (V)">
@@ -190,8 +176,7 @@
       </div>
     </header>
 
-    <!-- Il segno da fare. Centrato e grande perche' e' l'informazione piu'
-         importante della schermata: prima stava di lato e non si trovava. -->
+    <!-- Il segno da fare, centrato e grande  -->
     <div class="prompt">
       <p class="prompt-eyebrow">Your turn — make this sign</p>
       <div class="prompt-row">
@@ -204,16 +189,11 @@
     </div>
 
 
-    <!-- Le due card che l'occhio confronta di continuo -->
     <main class="lesson-stage">
 
-      <!-- Colonna demo: piu' piccola della webcam, di proposito -->
       <section class="stage-col demo-col">
         <div class="card demo-card">
           <span class="card-tag">Demo</span>
-          <!-- autoplay oltre al play() da codice: se la scheda e' nascosta al
-               caricamento il browser sospende il video, e l'attributo lo fa
-               ripartire da solo appena la pagina torna visibile -->
           <video id="demo-video" loop muted playsinline autoplay preload="auto"></video>
           <p class="demo-missing" id="demo-missing" hidden>No demo for this sign</p>
           <div class="demo-controls">
@@ -233,23 +213,19 @@
           </div>
         </div>
 
-        <!-- Promemoria mostrati mentre la lezione e' in pausa, quando la demo
-             diventa l'elemento grande e l'utente la sta studiando -->
         <ul class="demo-hints" id="demo-hints" hidden>
           <li>The small details matter!</li>
           <li>Which hand you use matters!</li>
         </ul>
       </section>
 
-      <!-- Colonna webcam: l'elemento dominante della schermata -->
+      <!-- Colonna webcam -->
       <section class="stage-col you-col">
         <div class="card cam-card" id="cam-card" data-state="idle">
           <span class="card-tag right">You</span>
           <video id="webcam" autoplay playsinline muted></video>
           <canvas id="overlay"></canvas>
 
-          <!-- Canale di stato unico, sul bordo: colore + movimento,
-               leggibili in visione periferica mentre si guardano le mani. -->
           <div class="cam-ring" aria-hidden="true"></div>
 
           <div class="cam-badge">
@@ -257,16 +233,13 @@
             <span id="cam-badge-text">Ready</span>
           </div>
 
-          <!-- Glifo del verdetto: mai il colore da solo -->
           <div class="cam-verdict" id="cam-verdict" aria-hidden="true">
             <svg class="icon v-ok"><use href="#i-check"></use></svg>
             <svg class="icon v-no"><use href="#i-retry"></use></svg>
           </div>
 
-          <!-- Suggerimento non bloccante (mani fuori campo, cattura breve) -->
           <p class="cam-hint" id="cam-hint" hidden></p>
 
-          <!-- Stati che coprono la card: permessi, errori, fine lezione -->
           <div class="cam-cover" id="cam-cover" hidden>
             <svg class="icon cover-icon" id="cover-icon"><use href="#i-camera"></use></svg>
             <h3 class="cover-title" id="cover-title"></h3>
@@ -284,10 +257,6 @@
 
     </main>
 
-    <!-- Verdetto: sale dal basso solo quando c'e' qualcosa da dire.
-         Lo spazio pero' resta occupato sempre: se comparendo accorciasse il
-         palco, le due card salterebbero verso l'alto proprio nell'istante in
-         cui l'utente le sta guardando. -->
     <div class="feedback-slot">
     <div class="feedback" id="feedback" role="status" aria-live="polite" hidden>
       <span class="fb-glyph" aria-hidden="true">
@@ -310,7 +279,7 @@
       <p class="cd-cheer" id="cd-cheer"></p>
     </div>
 
-    <!-- Diagnostica: fuori dalla vista di chi impara, a portata di chi tara -->
+    <!-- Debug -->
     <aside class="debug-panel" id="debug-panel" hidden aria-label="Diagnostics">
       <h3>Capture diagnostics</h3>
       <div class="meter">
@@ -335,9 +304,7 @@
 
 
   <!-- ===================== FREE PRACTICE ===================== -->
-  <!-- Stessa lingua visiva della lezione: webcam dominante, e accanto (solo
-       se si appunta un segno dalla libreria) la demo, con lo stesso rapporto
-       di dimensioni. -->
+
   <div id="app-screen" class="screen free-screen hidden">
 
     <header class="lesson-bar">
@@ -433,9 +400,7 @@
                 <span class="sr-only">Hear the word</span>
               </button>
             </div>
-            <!-- Piccola e chiamata "confidence", non "accuracy": e' il softmax
-                 del classificatore e non e' calibrato, resta sopra il 90% anche
-                 quando sbaglia. Darle risalto insegnerebbe a fidarsene troppo. -->
+
             <div class="result-conf" id="free-conf" hidden>
               <span class="conf-label">confidence</span>
               <span class="conf-track"><span class="conf-fill" id="free-conf-fill"></span></span>
@@ -446,7 +411,6 @@
 
       </main>
 
-      <!-- Libreria: affianca il palco e lo restringe, non lo copre. -->
       <aside class="library" id="library-drawer" role="complementary" aria-label="Your signs">
         <header class="lib-head">
           <h2 class="lib-title" id="lib-title" tabindex="-1">Your signs</h2>

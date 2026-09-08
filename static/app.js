@@ -198,8 +198,8 @@ function init() {
   const lesson = params.get('lesson');
   const mode = params.get('mode');
 
-  $('lessons-btn').addEventListener('click', goToPath);
-  $('free-btn').addEventListener('click', () => { freeOrigin = 'menu'; goToFree(); });
+  // bottone che porta al percorso delle lezioni
+  $('start-btn').addEventListener('click', goToPath);
 
   menuDebug.init();
 
