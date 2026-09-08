@@ -1,12 +1,10 @@
 // static/lesson.js
 //
-// La schermata di lezione: possiede il proprio DOM e una macchina a stati
-// esplicita, alimentata dai messaggi che arrivano da SignSession.
-//
-// L'idea portante e' che durante la pratica l'utente guarda due soli oggetti,
-// la demo e la propria immagine. Percio' lo stato non vive in un pannello di
-// testo altrove, ma nell'anello attorno al video: colore, spessore e movimento,
-// che e' quello che la visione periferica sa leggere.
+// Schermata di lezione: possiede il proprio DOM e una macchina a stati
+// alimentata dai messaggi di SignSession. Durante la pratica l'utente guarda
+// due soli oggetti, la demo e la propria immagine: lo stato non vive in un
+// pannello di testo, ma nell'anello attorno al video (colore, spessore,
+// movimento), leggibile anche in visione periferica.
 
 import { SignSession } from './session.js';
 import { Speech } from './speech.js';
@@ -20,13 +18,7 @@ const VERDICT_HOLD_MS = 900;     // durata dell'anello colorato dopo un tentativ
 const CHEAT_AFTER_WRONG = 3;     // vedi _cheatAllows()
 const CHEAT_CHANCE = 0.5;
 
-/**
- * Occhiello sopra il segno.
- *
- * Su uno step "a memoria" cambia, e non e' un dettaglio: una demo assente
- * senza spiegazione si legge come un guasto. Detto a parole, diventa la
- * consegna dell'esercizio. Torna normale appena l'utente scopre il video.
- */
+/** Occhiello sopra il segno: diverso sugli step "a memoria" (demo coperta). */
 const EYEBROW = {
   normal: 'Your turn, make this sign',
   memory: 'From memory, no demo this time',
@@ -35,14 +27,10 @@ const EYEBROW = {
 const $ = (id) => document.getElementById(id);
 
 /**
- * Cosa si dice quando un tentativo non viene riconosciuto.
- *
- * Non si nomina MAI il segno che il modello crede di aver visto: molto spesso
- * il gesto dell'utente e' corretto ed e' il riconoscitore a sbagliare, e
- * sentirsi dire "sembrava FINE" quando hai fatto bene demoralizza e basta.
- * I messaggi salgono di concretezza a ogni tentativo e restano dalla parte
- * dell'utente; dal terzo in poi si fanno brevi e la voce tace, per non
- * ripetere la stessa frase all'infinito mentre si insiste.
+ * Messaggi per un tentativo non riconosciuto. Non si nomina MAI il segno che
+ * il modello crede di aver visto: spesso il gesto e' corretto ed e' il
+ * riconoscitore a sbagliare. Salgono di concretezza a ogni tentativo; dal
+ * terzo in poi restano brevi e la voce tace.
  */
 const WRONG_MESSAGES = [
   { text: 'Almost! The small details make the difference, give it another go.', speak: true },
@@ -156,9 +144,8 @@ export class LessonView {
     this.steps = [];
     this.stepStatus = [];
     this.skipped = new Set();
-    // Quali step "a memoria" l'utente ha gia' scoperto. Per indice e non un
-    // solo flag: scoprire il quinto segno non deve scoprire anche il settimo,
-    // e tornando indietro su uno gia' guardato non lo si richiude in faccia.
+    // Step "a memoria" gia' scoperti, per indice: scoprirne uno non deve
+    // scoprire gli altri, e tornando indietro su uno gia' visto non si richiude.
     this.revealed = new Set();
     this.currentIndex = 0;
     this.totalSteps = 0;
@@ -188,11 +175,9 @@ export class LessonView {
   // ------------------------------------------------------------------ ciclo
 
   mount() {
-    // Gli elementi della schermata vivono in index.html e NON vengono ricreati
-    // ad ogni lezione, mentre una LessonView nuova nasce ogni volta che si
-    // entra in una lezione. Senza questo AbortController i listener si
-    // accumulavano: alla seconda lezione un click ne eseguiva due, il toggle
-    // andava e tornava, e i pulsanti sembravano non rispondere.
+    // Gli elementi vivono in index.html e non vengono ricreati ad ogni
+    // lezione: senza AbortController i listener si accumulavano fra una
+    // lezione e l'altra.
     this._ac = new AbortController();
 
     this.el.screen.classList.remove('hidden');
@@ -204,13 +189,7 @@ export class LessonView {
     this._installDevHook();
   }
 
-  /**
-   * Riporta il DOM condiviso allo stato di partenza.
-   *
-   * La schermata sta in index.html ed e' la stessa per tutte le lezioni: senza
-   * questo, entrando in una lezione nuova ci si ritrovava addosso la pausa, il
-   * pannello diagnostica o i suggerimenti lasciati aperti in quella prima.
-   */
+  /** Riporta il DOM condiviso (uguale per tutte le lezioni) allo stato iniziale. */
   _resetUi() {
     this.paused = false;
     this.countdownDone = false;
@@ -241,7 +220,7 @@ export class LessonView {
     this._hideCover();
     this.el.progress.innerHTML = '';
     this.el.count.textContent = '';
-    this.el.word.textContent = ' ';
+    this.el.word.textContent = ' ';
   }
 
   unmount() {
@@ -268,8 +247,8 @@ export class LessonView {
       onError: (kind) => this._onTrouble(kind),
       onClose: (event) => this._onDisconnected(event),
       onOpen: () => {
-        // Il socket puo' aprirsi dopo che la camera e' gia' fallita: in quel
-        // caso la lezione si carica, ma l'avviso sulla camera deve restare.
+        // Il socket puo' aprirsi dopo che la camera e' gia' fallita: l'avviso
+        // sulla camera in quel caso deve restare.
         if (this.troubled) return;
         this._hideCover();
         this._setCamState('ready');
@@ -287,18 +266,16 @@ export class LessonView {
     this.currentIndex = 0;
     this.resumeAt = 0;
     this.captures = 0;
-    this.countdownDone = false;   // si riparte davvero da capo, conto compreso
+    this.countdownDone = false;
     this._renderProgress();
     this._start();
   }
 
   /**
-   * Riprende dopo una caduta di connessione SENZA perdere i passi gia' fatti.
-   *
-   * Il socket che cade porta con se' la sessione lato server, e quella nuova
-   * ripartirebbe dal primo segno: ricominciare da capo per un problema di rete
-   * e' una punizione che l'utente non si e' meritato. Lo stato vero resta qui
-   * nel client, e a riconnessione avvenuta lo si rimanda al server con `goto`.
+   * Riprende dopo una caduta di connessione senza perdere i passi gia' fatti:
+   * il socket porta con se' la sessione lato server, che ripartirebbe dal
+   * primo segno. Lo stato vero resta qui nel client e viene rimandato al
+   * server con `goto` a riconnessione avvenuta.
    */
   _reconnect() {
     this.resumeAt = this.currentIndex;
@@ -332,7 +309,6 @@ export class LessonView {
     on(this.el.demoHide, 'click', () => this._conceal());
 
     on(this.el.speakWord, 'click', () => {
-      // Richiesta esplicita: parla anche a dettatura spenta.
       const label = this._currentLabel();
       if (label) Speech.speakNow(label);
     });
@@ -346,9 +322,9 @@ export class LessonView {
     // Se il video finisce fuori loop (sorgente senza loop pulito), riparte.
     on(this.el.demo, 'ended', () => this.el.demo.play().catch(() => {}));
 
-    // Tornando su una scheda lasciata in secondo piano il browser ha sospeso
-    // il video: senza questo la demo resta congelata e sembra rotta. Non si
-    // tocca se e' stato l'utente a metterla in pausa.
+    // Tornando su una scheda in secondo piano il browser sospende il video:
+    // senza questo la demo resta congelata. Non si tocca se e' stato
+    // l'utente a metterla in pausa.
     on(document, 'visibilitychange', () => {
       if (document.visibilityState !== 'visible') return;
       if (this.userPausedDemo || !this.el.demo.getAttribute('src')) return;
@@ -400,9 +376,8 @@ export class LessonView {
       this.el.progress.appendChild(li);
     });
 
-    // Se stiamo riconnettendo, il server ha aperto una sessione nuova che
-    // riparte da zero: gli si dice a che punto eravamo, cosi' l'utente non
-    // perde i passi gia' fatti.
+    // In riconnessione il server ha aperto una sessione nuova da zero: gli si
+    // dice a che punto eravamo.
     if (this.resumeAt > 0 && this.session) {
       this.session.goto(this.resumeAt);
       this.resumeAt = 0;
@@ -414,16 +389,13 @@ export class LessonView {
   _onLesson(msg) {
     this.totalSteps = msg.total_steps;
 
-    // Un tentativo e' stato valutato
     if (msg.attempted_display) {
       this.captures++;
 
       if (msg.correct) {
         this.wrongStreak = 0;
-        // Lo step appena riuscito e' quello corrente: il server ha gia'
-        // avanzato, ma this.currentIndex si aggiorna solo in _renderStep.
-        // Segnarlo qui serve a chi torna indietro su un segno saltato e lo
-        // rifa' bene: il pallino deve poter passare da "saltato" a "fatto".
+        // Il server ha gia' avanzato: this.currentIndex e' ancora lo step
+        // appena riuscito, utile per chi torna indietro su un segno saltato.
         this._markDone(this.currentIndex);
         Progress.markSign(msg.attempted_gloss, KNOWN, this.lessonId);
         this._setCamState('correct');
@@ -435,8 +407,7 @@ export class LessonView {
         });
         Speech.say('Correct');
 
-        // Il verdetto resta a schermo, poi si passa oltre. Il server ha gia'
-        // avanzato: msg.target_* e' lo step SUCCESSIVO.
+        // msg.target_* qui e' gia' lo step successivo.
         this.advanceTimer = setTimeout(() => {
           this.advanceTimer = null;
           this._hideFeedback();
@@ -446,7 +417,6 @@ export class LessonView {
         return;
       }
 
-      // Tentativo non riconosciuto come il segno richiesto
       this.wrongStreak++;
       this._updateDebug({ last: msg.last_gloss, conf: msg.last_confidence });
 
@@ -515,9 +485,7 @@ export class LessonView {
     this.el.badgeText.textContent = 'Disconnected';
 
     // 1008 = il server ha rifiutato la lezione (gloss sconosciuto, id che non
-    // combacia col nome file...). Riconnettersi non servirebbe a nulla: senza
-    // distinguerlo l'utente vedeva "Connection lost" e uno schermo vuoto,
-    // senza mai sapere che il problema era nel file della lezione.
+    // combacia col file...): riconnettersi non servirebbe a nulla.
     if (event && event.code === 1008) {
       this._showCover({
         icon: '#i-alert',
@@ -562,17 +530,11 @@ export class LessonView {
     this._preloadNext();
     this._syncNav();
 
-    // Il contenuto della lezione si carica anche a camera bloccata: in quel
-    // caso l'anello NON deve tornare "ready", o l'avviso a schermo direbbe una
-    // cosa e il bordo del video un'altra. Nemmeno a lezione in pausa, dove ora
-    // si arriva tornando indietro di un segno mentre si studia la demo.
+    // Il contenuto puo' caricarsi anche a camera bloccata o a lezione in
+    // pausa: l'anello non deve tornare "ready" in quei casi.
     if (!this.troubled && !this.paused && !this._coverVisible()) this._setCamState('ready');
 
-    // Solo il nome del segno: la posizione nella lezione la dice gia' lo
-    // stepper, e una frase lunga arriva quando l'utente ha gia' ricominciato.
     Speech.say(label);
-
-    // Alla prima comparsa di uno step si lascia il tempo di prepararsi.
     this._runCountdown();
   }
 
@@ -608,13 +570,10 @@ export class LessonView {
 
     this._applyDemoVisibility();
 
-    // Una demo coperta non deve girare sotto al pannello: al momento di
-    // scoprirla si troverebbe a meta' di un gesto invece che al suo inizio.
     if (this._demoConcealed()) this.el.demo.pause();
     else if (fresh) this.el.demo.play().catch(() => {});
   }
 
-  /** Scalda la cache col video successivo: nessun buco al cambio step. */
   _preloadNext() {
     const next = this.steps[this.currentIndex + 1];
     if (next && next.demo_url) this.preloader.src = next.demo_url;
@@ -623,9 +582,8 @@ export class LessonView {
   // ------------------------------------------------------------- controlli
 
   _toggleDemoPlay() {
-    // Raggiungibile anche dalla barra spaziatrice, quindi il controllo che sul
-    // pulsante fa il disabled va rifatto qui: senza demo, o con la demo
-    // coperta, non c'e' niente da mettere in pausa.
+    // Raggiungibile anche dalla barra spaziatrice: il controllo del disabled
+    // sul pulsante va ripetuto qui.
     if (this.el.demoPlay.disabled) return;
 
     if (this.el.demo.paused) {
@@ -662,16 +620,12 @@ export class LessonView {
   _syncVoiceButton() {
     const on = Speech.enabled;
     this.el.voiceToggle.setAttribute('aria-pressed', String(on));
-    // Lo stato si legge dal testo, non solo dall'icona e dal colore: con la
-    // sola icona non si capiva se fosse accesa.
     $('voice-label').textContent = on ? 'Voice on' : 'Voice off';
   }
 
   _toggleVoice() {
     const on = Speech.toggle();
     this._syncVoiceButton();
-    // Conferma udibile immediata: accendere e non sentire nulla fino al
-    // prossimo step lasciava il dubbio che non funzionasse.
     if (on) {
       const label = this._currentLabel();
       Speech.speakNow(label ? `Voice on. Sign: ${label}` : 'Voice on');
@@ -682,21 +636,11 @@ export class LessonView {
     const open = this.el.debug.hidden;
     this.el.debug.hidden = !open;
     this.el.debugToggle.setAttribute('aria-pressed', String(open));
-
-    // _updateDebug esce subito a pannello chiuso, quindi all'apertura le righe
-    // che cambiano di rado (lo stato) mostrerebbero un valore vecchio finche'
-    // non cambia da solo. Si riallinea qui.
     if (open) this._updateDebug({ state: this.el.cam.dataset.state });
   }
 
   /* ------------------------------------------------------- pausa lezione */
 
-  /**
-   * Ferma il riconoscimento e scambia l'importanza dei due box: la demo
-   * diventa quella grande, la webcam si ritira. Serve perche' inquadrati si
-   * resta comunque, e senza pausa un gesto qualunque fatto mentre si studia
-   * il video verrebbe letto come un tentativo.
-   */
   _togglePause() {
     this.paused = !this.paused;
 
@@ -708,8 +652,6 @@ export class LessonView {
     if (this.session) this.session.setPaused(this.paused);
 
     if (this.paused) {
-      // Il conto alla rovescia va CHIUSO, non solo fermato: _clearTimers
-      // spegne il timer ma lascerebbe il numero congelato sopra al palco.
       this._endCountdown();
       this._clearTimers();
       this._hideFeedback();
@@ -717,9 +659,8 @@ export class LessonView {
       this._setCamState('paused');
       Speech.stop();
       this.userPausedDemo = false;
-      // La demo e' cio' che si sta studiando in pausa, ma se lo step e' "a
-      // memoria" e l'utente non l'ha scoperta resta coperta: la pausa non
-      // deve essere una scorciatoia per aggirare l'esercizio.
+      // Se lo step e' "a memoria" e non e' stato scoperto resta coperto: la
+      // pausa non deve aggirare l'esercizio.
       if (!this._demoConcealed()) this.el.demo.play().catch(() => {});
     } else {
       this._setCamState('ready');
@@ -757,35 +698,20 @@ export class LessonView {
   _endCountdown() {
     clearTimeout(this.cdTimer); this.cdTimer = null;
     this.el.countdown.hidden = true;
-    // La pausa manuale, se nel frattempo e' stata scelta, ha la precedenza.
     if (this.session && !this.paused) this.session.setPaused(false);
   }
 
   /* ----------------------------------------------------- indulgenza debug */
 
-  /**
-   * Accetta un tentativo sbagliato con probabilita' 50%, ma solo a pannello
-   * diagnostica aperto e solo quando si e' gia' al terzo errore o oltre sullo
-   * stesso segno — cioe' da quando il messaggio smette di cambiare e si
-   * capisce che il riconoscitore non ne vuole sapere.
-   *
-   * E' uno strumento di prova per non restare bloccati durante le demo, e
-   * infatti non lascia alcuna traccia a schermo: si comporta esattamente come
-   * un riconoscimento riuscito.
-   */
   _cheatAllows() {
     return !this.el.debug.hidden
         && this.wrongStreak >= CHEAT_AFTER_WRONG
         && Math.random() < CHEAT_CHANCE;
   }
 
-  /** Fa passare lo step come riuscito: il server avanza con lo stesso comando dello skip. */
   _acceptAnyway(msg) {
     this.wrongStreak = 0;
     this._markDone(this.currentIndex);
-    // Per l'utente questo step e' riuscito, quindi in libreria va fra i
-    // conosciuti: il server non potrebbe saperlo, perche' l'avanzamento qui
-    // sotto usa lo stesso comando "skip" di uno skip vero.
     Progress.markSign(msg.attempted_gloss, KNOWN, this.lessonId);
     this._setCamState('correct');
     this._hideHint();
@@ -796,8 +722,6 @@ export class LessonView {
     });
     Speech.say('Correct');
 
-    // NON passa da _skip(): quello segnerebbe lo step come saltato, e qui
-    // invece deve risultare completato come qualunque altro.
     this.advanceTimer = setTimeout(() => {
       this.advanceTimer = null;
       this._hideFeedback();
@@ -806,8 +730,6 @@ export class LessonView {
   }
 
   _watchAgain() {
-    // Su uno step "a memoria" il tasto R vale come "scopri e riguarda":
-    // chiedere di rivedere un video coperto altrimenti non farebbe nulla.
     if (this._demoConcealed()) this._reveal();
     if (!this.el.demo.getAttribute('src')) return;
 
@@ -821,19 +743,12 @@ export class LessonView {
 
   /* --------------------------------------------- navigazione fra i segni */
 
-  /**
-   * Torna al segno precedente per riprovarlo.
-   *
-   * Il comando `goto` esisteva gia' per la riconnessione: qui serve a quello
-   * che l'utente chiede, cioe' rifare il segno di prima. Quello che era gia'
-   * stato fatto NON viene cancellato — lo stepper continua a mostrare fatto o
-   * saltato — e la memoria dei progressi non retrocede mai.
+  /*
+   Torna al segno precedente per riprovarlo
    */
   _goBack() {
     if (!this._canGoBack()) return;
 
-    // Un verdetto in corso ha un timer che sta per portare avanti lo step: se
-    // restasse acceso, un istante dopo annullerebbe il passo indietro.
     this._clearTimers();
     this._hideFeedback();
     this._hideHint();
@@ -842,11 +757,7 @@ export class LessonView {
     this.session.goto(this.currentIndex - 1);
   }
 
-  /**
-   * La copertura sulla webcam copre TUTTI i casi in cui tornare indietro non
-   * ha senso: camera negata, connessione caduta, lezione finita. Ecco perche'
-   * _syncNav viene richiamato da _showCover e _hideCover.
-   */
+  /** La copertura sulla webcam copre tutti i casi in cui non ha senso tornare indietro. */
   _canGoBack() {
     return this.currentIndex > 0
         && !this.completed
@@ -855,7 +766,7 @@ export class LessonView {
         && !!this.session;
   }
 
-  /** Sul primo segno il pulsante resta al suo posto e si spegne: sparendo, il badge ballerebbe. */
+  /** Sul primo segno il pulsante resta al suo posto e si spegne. */
   _syncNav() {
     const can = this._canGoBack();
     this.el.goBack.disabled = !can;
@@ -874,16 +785,10 @@ export class LessonView {
   /* ------------------------------------------------- segni "a memoria" */
 
   /**
-   * Gli step con `from_memory` nel JSON della lezione partono con la demo
-   * coperta: si prova a rifare il segno senza guardarlo. Scoprirla resta
-   * sempre possibile — e' un esercizio, non un blocco.
-   *
-   * Il flag si legge da this.steps e non dal messaggio `lesson`: l'elenco
-   * completo arriva in lesson_meta, che il server manda prima di qualunque
-   * messaggio di step, quindi a questo punto c'e' sempre.
-   *
-   * Senza demo_url il flag non ha effetto: promettere "Show me the sign" e
-   * poi non avere niente da mostrare sarebbe peggio del non chiedere.
+   * Gli step con `from_memory` partono con la demo coperta: si prova il
+   * segno senza guardarlo, ma scoprirla resta sempre possibile. Il flag si
+   * legge da this.steps (arrivato con lesson_meta), non dal messaggio
+   * `lesson`. Senza demo_url non ha effetto.
    */
   _isMemoryStep(i = this.currentIndex) {
     const step = this.steps[i];
@@ -910,8 +815,7 @@ export class LessonView {
     this.revealed.delete(this.currentIndex);
     this.el.demo.pause();
     this._applyDemoVisibility();
-    // Il pulsante che si e' appena premuto ora e' nascosto: senza questo il
-    // fuoco tornerebbe al <body> e la tastiera perderebbe il filo.
+    // Il pulsante appena premuto ora e' nascosto: si sposta il fuoco.
     if (fromButton) this.el.demoReveal.focus();
   }
 
@@ -925,25 +829,19 @@ export class LessonView {
     this.el.demoHidden.hidden = !concealed;
     this.el.demoMissing.hidden = hasDemo || concealed;
 
-    // Coperta non c'e' niente da fermare, rallentare o specchiare: i controlli
-    // restano al loro posto e si spengono, invece di sparire e far saltare la
-    // fila di pillole sotto al video.
     this.el.demoPlay.disabled = !usable;
     this.el.demoSlow.disabled = !usable;
     this.el.demoMirror.disabled = !usable;
     this.el.demoHide.hidden = !(usable && this._isMemoryStep());
 
-    // Solo se cambia davvero: la riga e' un aria-live, e riscriverla identica
-    // ad ogni step la farebbe rileggere per niente.
+    // Solo se cambia davvero: e' un aria-live, non va riletto ad ogni step.
     const eyebrow = concealed ? EYEBROW.memory : EYEBROW.normal;
     if (this.el.eyebrow.textContent !== eyebrow) this.el.eyebrow.textContent = eyebrow;
   }
 
   _skip() {
-    // Lo stepper non retrocede: se il segno era gia' stato fatto e ci si e'
-    // tornati sopra, saltarlo adesso non cancella che lo si sapeva. E' la
-    // stessa regola della memoria dei progressi, dove "da rivedere" non
-    // sovrascrive "conosciuto".
+    // Lo stepper non retrocede: se il segno era gia' "fatto" e ci si e'
+    // tornati sopra, saltarlo ora non cancella che lo si sapeva.
     this.skipped.add(this.currentIndex);
     const step = this.steps[this.currentIndex];
     if (step) Progress.markSign(step.gloss, REVIEW, this.lessonId);
@@ -972,8 +870,8 @@ export class LessonView {
     };
     if (labels[state]) this.el.badgeText.textContent = labels[state];
 
-    // Il colore del verdetto va tenuto un attimo, altrimenti il prossimo
-    // messaggio di status (20 volte al secondo) lo spegne subito.
+    // Il colore del verdetto va tenuto un attimo, o il prossimo status (20
+    // volte al secondo) lo spegnerebbe subito.
     if (state === 'correct' || state === 'wrong') {
       clearTimeout(this.verdictTimer);
       this.verdictTimer = setTimeout(() => {
@@ -1080,7 +978,7 @@ export class LessonView {
     this.el.demo.pause();
     this.el.word.textContent = 'All done';
     this._setCamState('idle');
-    
+
     this._showCover({
       icon: '#i-check',
       tone: 'ok',
@@ -1093,9 +991,11 @@ export class LessonView {
           label: s.display_text || s.gloss || s.display,
           ok: this.stepStatus[s.originalIndex] === 'done'
         })),
+      // Scambiati apposta: "Back to lessons" e' l'azione piena, "Practice
+      // again" quella secondaria.
       actions: [
-        { label: 'Practice again', primary: true, onClick: () => this._restart() },
-        { label: 'Back to lessons', onClick: () => this.onExit() },
+        { label: 'Back to lessons', primary: true, onClick: () => this.onExit() },
+        { label: 'Practice again', onClick: () => this._restart() },
       ],
     });
 
@@ -1147,8 +1047,6 @@ export class LessonView {
         this._toggleDemoPlay();
         break;
       case 'ArrowLeft': {
-        // Le frecce servono ai campi di testo, e in lezione non ce ne sono:
-        // qui valgono come "segno precedente", anche col fuoco su un pulsante.
         if (e.target.closest && e.target.closest('input, select, textarea')) return;
         e.preventDefault();
         this._goBack();
@@ -1182,16 +1080,12 @@ export class LessonView {
 
   // ------------------------------------------------------------- sviluppo
 
-  /**
-   * Permette di esercitare ogni stato visivo senza webcam ne' modello, cosa
-   * altrimenti impossibile in un browser headless. Resta utile poi come
-   * strumento di debug:  __duosl.simulate('wrong')
-   */
+  /** Esercita ogni stato visivo senza webcam ne' modello: __duosl.simulate('wrong') */
   _installDevHook() {
     window.__duosl = {
       simulate: (kind) => {
         const step = this.steps[this.currentIndex];
-        const label = step ? step.display : 'HELLO';   // gloss vero in attempted_gloss: il server lo manda sempre
+        const label = step ? step.display : 'HELLO';
         switch (kind) {
           case 'capturing': this._setCamState('capturing'); break;
           case 'ready':     this._setCamState('ready'); break;
@@ -1232,15 +1126,9 @@ export class LessonView {
           default: console.warn('stati: capturing ready correct wrong discarded disconnected denied nocam completed');
         }
       },
-      /** Torna al segno precedente, come il pulsante nel badge. */
       back: () => this._goBack(),
 
-      /**
-       * Accende o spegne al volo il flag "a memoria" sullo step corrente,
-       * per provare la modalita' senza dover modificare il JSON della lezione:
-       *   __duosl.memory()        copre la demo
-       *   __duosl.memory(false)   la rimette come le altre
-       */
+      /** Attiva/disattiva il flag "a memoria" sullo step corrente senza toccare il JSON. */
       memory: (on = true) => {
         const step = this.steps[this.currentIndex];
         if (!step) return;
