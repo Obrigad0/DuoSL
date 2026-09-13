@@ -13,10 +13,8 @@
     { "gloss": "FINE2", "display_text": "FINE", "demo_url":"/demos/fine.mp4" },
     { "gloss": "YOUR", "demo_url":"/demos/your.mp4" },
     { "gloss": "NAME", "demo_url": "/demos/name.mp4" },
-    { "gloss": "WHAT2", "display_text": "WHAT", "demo_url": "/demos/what2.mp4" },
-    { "gloss": "FINE2", "display_text": "FINE", "demo_url":"/demos/fine.mp4", "from_memory": true },
-    { "gloss": "YOUR", "demo_url":"/demos/your.mp4" ,"from_memory": true},
-    { "gloss": "NAME", "demo_url": "/demos/name.mp4","from_memory": true},
-    { "gloss": "WHAT2", "display_text": "WHAT", "demo_url": "/demos/what2.mp4", "from_memory": true }
+    { "gloss": "YOUR", "demo_url":"/demos/your.mp4", "from_memory": true},
+    { "gloss": "NAME", "demo_url": "/demos/name.mp4", "from_memory": true }
   ]
+
 }
