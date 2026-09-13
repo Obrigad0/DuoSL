@@ -40,6 +40,7 @@
     <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M13 5l7 7-7 7"/></symbol>
     <symbol id="i-eye" viewBox="0 0 24 24"><path d="M1.6 12S5.3 5.2 12 5.2 22.4 12 22.4 12 18.7 18.8 12 18.8 1.6 12 1.6 12z"/><circle cx="12" cy="12" r="3.1"/></symbol>
     <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M9.8 5.5A9.9 9.9 0 0 1 12 5.2c6.7 0 10.4 6.8 10.4 6.8a18.3 18.3 0 0 1-3.4 4.4M6.2 6.8A18.2 18.2 0 0 0 1.6 12S5.3 18.8 12 18.8a9.9 9.9 0 0 0 4.1-.9"/><path d="M9.8 9.8a3.1 3.1 0 0 0 4.4 4.4"/><path d="M3 3l18 18"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 1 1 4.6 2.5c-.9.6-1.7 1.1-1.7 2.3"/><path d="M12 17.5h.01"/></symbol>
   </svg>
 
 
@@ -126,6 +127,10 @@
         <h1>Your journey</h1>
         <p id="path-subtitle">&nbsp;</p>
       </div>
+      <button id="path-help" class="icon-btn" type="button" title="How this works (H)">
+        <svg class="icon"><use href="#i-help"></use></svg>
+        <span class="sr-only">How this works</span>
+      </button>
     </header>
 
     <div class="path-scroll" id="path-scroll">
@@ -164,6 +169,10 @@
       </div>
 
       <div class="bar-actions">
+        <button id="lesson-help" class="chip-btn quiet" type="button" title="How this works (H)">
+          <svg class="icon"><use href="#i-help"></use></svg>
+          <span class="chip-label">Help</span>
+        </button>
         <button id="voice-toggle" class="chip-btn" type="button" aria-pressed="false"
                 title="Read the sign aloud (V)">
           <svg class="icon icon-on"><use href="#i-volume-on"></use></svg>
@@ -354,6 +363,10 @@
       </div>
 
       <div class="bar-actions">
+        <button id="free-help" class="chip-btn quiet" type="button" title="How this works (H)">
+          <svg class="icon"><use href="#i-help"></use></svg>
+          <span class="chip-label">Help</span>
+        </button>
         <button id="free-library" class="chip-btn" type="button"
                 aria-expanded="false" aria-controls="library-drawer"
                 title="The signs you have learned (L)">
@@ -498,6 +511,51 @@
     </aside>
   </div>
 
+  <!-- ===================== TUTORIAL ===================== -->
+  <div id="tutorial-screen" class="screen tutorial-screen hidden" role="dialog" aria-modal="true" aria-labelledby="tutorial-title">
+    <div class="tutorial-card">
+      <button id="tutorial-close" class="icon-btn tutorial-close" type="button" title="Close (Esc)">
+        <svg class="icon"><use href="#i-close"></use></svg>
+        <span class="sr-only">Close instructions</span>
+      </button>
+
+      <div class="tutorial-slides" id="tutorial-slides">
+        <section class="tutorial-slide" data-slide="0">
+          <svg class="icon tutorial-icon"><use href="#i-camera"></use></svg>
+          <h2 id="tutorial-title">Get in frame</h2>
+          <p>Position yourself so the camera can see from just above your head down to a bit below your shoulders. Make sure you're in a well-lit room.</p>
+        </section>
+        <section class="tutorial-slide" data-slide="1" hidden>
+          <svg class="icon tutorial-icon"><use href="#i-hand"></use></svg>
+          <h2>Make the sign</h2>
+          <p>Wait until it says "Ready". Then try the sign. Once you're done, move your hands out of frame. Remember to mouth the word while you sign.</p>
+        </section>
+        <section class="tutorial-slide" data-slide="2" hidden>
+          <svg class="icon tutorial-icon"><use href="#i-check"></use></svg>
+          <h2>Wait for feedback</h2>
+          <p>Wait for the app's feedback before trying the sign again. It will say "Ready" once more when you can retry.</p>
+        </section>
+      </div>
+
+      <div class="tutorial-dots" id="tutorial-dots" role="tablist" aria-label="Slide navigation">
+        <button class="tutorial-dot" type="button" data-goto="0" aria-current="true" aria-label="Slide 1"></button>
+        <button class="tutorial-dot" type="button" data-goto="1" aria-label="Slide 2"></button>
+        <button class="tutorial-dot" type="button" data-goto="2" aria-label="Slide 3"></button>
+      </div>
+
+      <div class="tutorial-actions">
+        <button id="tutorial-skip" class="btn subtle" type="button">Skip</button>
+        <button id="tutorial-prev" class="btn subtle" type="button" hidden>
+          <svg class="icon"><use href="#i-arrow-left"></use></svg>
+          Back
+        </button>
+        <button id="tutorial-next" class="tutorial-next-btn" type="button">
+          Next
+          <svg class="icon"><use href="#i-arrow-right"></use></svg>
+        </button>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="/static/app.js"></script>
 </body>

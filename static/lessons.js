@@ -16,6 +16,7 @@
 // lezione non richiede di toccare ne' questo file ne' l'HTML.
 
 import { Progress } from './progress.js';
+import { tutorial, Tutorial } from './tutorial.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -84,6 +85,7 @@ export class LessonPath {
       subtitle: $('path-subtitle'),
       scroll: $('path-scroll'),
       canvas: $('path-canvas'),
+      help: $('path-help'),          
       lines: $('path-lines'),
       hint: $('path-hint'),
       start: $('path-start'),
@@ -109,6 +111,7 @@ export class LessonPath {
     this.el.screen.classList.remove('hidden');
     this.el.back.addEventListener('click', () => this.onExit(), opt);
     this.el.start.addEventListener('click', () => this._start(), opt);
+    this.el.help.addEventListener('click', () => tutorial.open(), opt);   
     document.addEventListener('keydown', this._onKey, opt);
 
     // La geometria dei nodi e' calcolata in JS a partire da --disc, che il CSS
@@ -543,6 +546,14 @@ export class LessonPath {
       else this.onStartLesson(this.selected);
     };
 
+    // Prima di entrare per la prima volta nella prima lezione, si spiega come
+    // funziona il riconoscimento. 
+    const isFirstLesson = this.lessons.length > 0 && this.selected === this.lessons[0].id;
+    if (isFirstLesson && !Tutorial.hasBeenSeen()) {
+      tutorial.open(go);
+      return;
+    }
+
     if (reducedMotion() || !this.avatar) { go(); return; }
 
     // L'omino entra nel cerchio, poi si cambia schermata: e' il ponte fra
@@ -569,6 +580,7 @@ export class LessonPath {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
 
     if (e.key === 'Escape') { this.onExit(); return; }
+    if (e.key.toLowerCase() === 'h') { e.preventDefault(); tutorial.open(); return; }
 
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
       // Frecce fra i nodi scegliibili: il percorso e' una fila, ed e' cosi'

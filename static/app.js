@@ -10,6 +10,7 @@ import { LessonView } from './lesson.js';
 import { FreeView } from './free.js';
 import { LessonPath } from './lessons.js';
 import { Progress } from './progress.js';
+import { tutorial, Tutorial } from './tutorial.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -198,8 +199,12 @@ function init() {
   const lesson = params.get('lesson');
   const mode = params.get('mode');
 
-  // bottone che porta al percorso delle lezioni
-  $('start-btn').addEventListener('click', goToPath);
+  // bottone che porta al percorso delle lezioni: la primissima volta in
+  // assoluto si spiega prima come funziona il riconoscimento via webcam.
+  $('start-btn').addEventListener('click', () => {
+    if (!Tutorial.hasBeenSeen()) tutorial.open(goToPath);
+    else goToPath();
+  });
 
   menuDebug.init();
 

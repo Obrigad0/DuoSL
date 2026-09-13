@@ -9,6 +9,7 @@
 import { SignSession } from './session.js';
 import { Speech } from './speech.js';
 import { Progress, KNOWN, REVIEW } from './progress.js';
+import { tutorial } from './tutorial.js';
 
 const ADVANCE_DELAY_MS = 1200;   // quanto resta a schermo il verdetto positivo
 const SKIP_AFTER_WRONG = 2;      // errori consecutivi prima di offrire lo skip
@@ -91,6 +92,7 @@ export class LessonView {
       count: $('lesson-count'),
       voiceToggle: $('voice-toggle'),
       debugToggle: $('debug-toggle'),
+      help: $('lesson-help'),
 
       eyebrow: document.querySelector('#lesson-screen .prompt-eyebrow'),
       word: $('sign-word'),
@@ -302,6 +304,7 @@ export class LessonView {
     on(this.el.exit, 'click', () => this.onExit());
     on(this.el.voiceToggle, 'click', () => this._toggleVoice());
     on(this.el.debugToggle, 'click', () => this._toggleDebug());
+    on(this.el.help, 'click', () => tutorial.open());
     on(this.el.pauseBtn, 'click', () => this._togglePause());
 
     on(this.el.goBack, 'click', () => this._goBack());
@@ -1067,6 +1070,10 @@ export class LessonView {
       case 'd': case 'D':
         if (onControl) return;
         this._toggleDebug();
+        break;
+      case 'h': case 'H':
+        if (onControl) return;
+        tutorial.open();
         break;
     }
   }

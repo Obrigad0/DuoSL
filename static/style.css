@@ -2092,6 +2092,42 @@ button { font: inherit; color: inherit; }
   color: var(--n-0);
 }
 
+.tutorial-screen{
+  position: fixed; inset: 0; z-index: 60;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.55); backdrop-filter: blur(4px);
+}
+.tutorial-card{
+  position: relative;
+  width: min(420px, 90vw);
+  background: #fff; border-radius: 20px;
+  padding: 2rem 1.75rem 1.5rem;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,.25);
+}
+
+.tutorial-next-btn{
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: .5rem 1rem;
+  font-size: .9rem;
+  font-weight: 600;
+  border: none; border-radius: 999px;
+  background: var(--accent, #58cc02);
+  color: #fff;
+  cursor: pointer;
+}
+.tutorial-next-btn .icon{ width: 16px; height: 16px; }
+.tutorial-next-btn:hover{ filter: brightness(0.95); }
+
+.tutorial-close{ position: absolute; top: .75rem; right: .75rem; }
+.tutorial-icon{ width: 48px; height: 48px; margin-bottom: 1rem; color: var(--accent, #58cc02); }
+.tutorial-slide h2{ margin: 0 0 .5rem; font-size: 1.3rem; }
+.tutorial-slide p{ margin: 0; color: #555; line-height: 1.5; }
+.tutorial-dots{ display: flex; justify-content: center; gap: .4rem; margin: 1.5rem 0 1rem; }
+.tutorial-dot{ width: 8px; height: 8px; border-radius: 50%; border: 0; background: #ddd; padding: 0; cursor: pointer; }
+.tutorial-dot[aria-current="true"]{ background: var(--accent, #58cc02); width: 20px; border-radius: 4px; }
+.tutorial-actions{ display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+
 
 /* ============ 10. RESPONSIVE E PREFERENZE DI MOVIMENTO =================== */
 

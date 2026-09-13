@@ -12,6 +12,7 @@
 import { SignSession } from './session.js';
 import { Speech } from './speech.js';
 import { LibraryDrawer } from './library.js';
+import { tutorial } from './tutorial.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -70,6 +71,7 @@ export class FreeView {
       exit: $('free-exit'),
       voiceToggle: $('free-voice'),
       voiceLabel: $('free-voice-label'),
+      help: $('free-help'),
 
       stage: $('free-stage'),
       demoCol: $('free-demo-col'),
@@ -229,6 +231,7 @@ export class FreeView {
     on(this.el.voiceToggle, 'click', () => this._toggleVoice());
     on(this.el.debugToggle, 'click', () => this._toggleDebug());
     on(this.el.dbgMin, 'input', () => this._setMinConf(Number(this.el.dbgMin.value)));
+    if (this.el.help) on(this.el.help, 'click', () => tutorial.open());
 
     on(this.el.speak, 'click', () => {
       // Richiesta esplicita: parla anche a dettatura spenta.
@@ -570,6 +573,10 @@ export class FreeView {
       case 'd': case 'D':
         if (onControl) return;
         this._toggleDebug();
+        break;
+      case 'h': case 'H':               
+        if (onControl) return;
+        tutorial.open();
         break;
     }
   }
