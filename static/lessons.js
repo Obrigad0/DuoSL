@@ -16,7 +16,7 @@
 // lezione non richiede di toccare ne' questo file ne' l'HTML.
 
 import { Progress } from './progress.js';
-import { tutorial, Tutorial } from './tutorial.js';
+import { tutorial } from './tutorial.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -546,14 +546,6 @@ export class LessonPath {
       else this.onStartLesson(this.selected);
     };
 
-    // Prima di entrare per la prima volta nella prima lezione, si spiega come
-    // funziona il riconoscimento. 
-    const isFirstLesson = this.lessons.length > 0 && this.selected === this.lessons[0].id;
-    if (isFirstLesson && !Tutorial.hasBeenSeen()) {
-      tutorial.open(go);
-      return;
-    }
-
     if (reducedMotion() || !this.avatar) { go(); return; }
 
     // L'omino entra nel cerchio, poi si cambia schermata: e' il ponte fra
@@ -578,6 +570,8 @@ export class LessonPath {
   _onKey(e) {
     if (this.el.screen.classList.contains('hidden')) return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;
+    // Col tutorial aperto la tastiera e' sua: un Esc deve chiudere solo lui.
+    if (tutorial.isOpen) return;
 
     if (e.key === 'Escape') { this.onExit(); return; }
     if (e.key.toLowerCase() === 'h') { e.preventDefault(); tutorial.open(); return; }

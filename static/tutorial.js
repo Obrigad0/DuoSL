@@ -24,6 +24,10 @@ class Tutorial {
     this._onKey = this._onKey.bind(this);
   }
 
+  /** Vero mentre l'overlay e' a schermo: le schermate sotto smettono di
+   *  ascoltare la tastiera, altrimenti un Esc chiuderebbe anche loro. */
+  get isOpen() { return this._ac !== null; }
+
   static hasBeenSeen() {
     try { return localStorage.getItem(SEEN_KEY) === '1'; }
     catch { return false; }

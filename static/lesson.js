@@ -160,6 +160,9 @@ export class LessonView {
     this.paused = false;          // lezione in pausa: riconoscimento fermo
     this.countdownDone = false;
     this.cdTimer = null;
+    // Il tutorial si apre da solo nella prima lezione, dopo il countdown.
+    this.introPending = false;
+    this.isFirstLesson = null;    // promise, risolta durante mount()
 
     this.thresholds = { enter: 1.4, exit: 0.9 };  // sovrascritte da lesson_meta
     this.advanceTimer = null;
@@ -181,6 +184,14 @@ export class LessonView {
     // lezione: senza AbortController i listener si accumulavano fra una
     // lezione e l'altra.
     this._ac = new AbortController();
+
+    // Spiegare come funziona il riconoscimento e' la cosa piu' importante, e
+    // si puo' perdere: nella prima lezione il tutorial esce sempre, appena
+    // finito il countdown. Solo qui, cosi' "Practice again" e le riconnessioni
+    // non lo ripropongono a meta' lezione.
+    this.introPending = true;
+    this.isFirstLesson = Progress.load()
+      .then((d) => !!(d && d.lessons && d.lessons[0] && d.lessons[0].id === this.lessonId));
 
     this.el.screen.classList.remove('hidden');
     this._resetUi();
@@ -689,7 +700,14 @@ export class LessonView {
       this.el.cdNumber.classList.add('tick');
 
       if (n === 0) {
-        this.cdTimer = setTimeout(() => { this.cdTimer = null; this._endCountdown(); }, 620);
+        this.cdTimer = setTimeout(() => {
+          this.cdTimer = null;
+          this._endCountdown();
+          // Agganciato qui e non dentro _endCountdown(): quello viene chiamato
+          // anche da pausa, guai e teardown, e solo la fine naturale del
+          // countdown deve aprire il tutorial.
+          this._maybeIntro();
+        }, 620);
         return;
       }
       n--;
@@ -702,6 +720,24 @@ export class LessonView {
     clearTimeout(this.cdTimer); this.cdTimer = null;
     this.el.countdown.hidden = true;
     if (this.session && !this.paused) this.session.setPaused(false);
+  }
+
+  /**
+   * Nella prima lezione, subito dopo il countdown, si spiega come funziona il
+   * riconoscimento. Il riconoscimento resta fermo mentre si legge, come
+   * durante il countdown, e riparte alla chiusura.
+   */
+  async _maybeIntro() {
+    if (!this.introPending) return;
+    this.introPending = false;            // una volta sola per ingresso
+    if (!(await this.isFirstLesson)) return;
+    // Fra l'await e qui si puo' essere usciti dalla lezione o messo in pausa.
+    if (!this._ac || this.paused || this.troubled || this.completed) return;
+
+    if (this.session) this.session.setPaused(true);
+    tutorial.open(() => {
+      if (this.session && !this.paused && !this.troubled) this.session.setPaused(false);
+    });
   }
 
   /* ----------------------------------------------------- indulgenza debug */
@@ -1035,6 +1071,9 @@ export class LessonView {
 
   _onKey(e) {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
+    // Col tutorial aperto la tastiera e' sua: altrimenti un Esc lo chiude e
+    // fa uscire anche dalla lezione.
+    if (tutorial.isOpen) return;
 
     // Space e Invio su un controllo a fuoco appartengono al controllo.
     const onControl = e.target.closest && e.target.closest('button, a, input, select, textarea');

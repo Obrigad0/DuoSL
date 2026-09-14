@@ -546,6 +546,8 @@ export class FreeView {
   _onKey(e) {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (this.el.screen.classList.contains('hidden')) return;
+    // Col tutorial aperto la tastiera e' sua: un Esc deve chiudere solo lui.
+    if (tutorial.isOpen) return;
 
     // Space e Invio su un controllo a fuoco appartengono al controllo.
     const onControl = e.target.closest && e.target.closest('button, a, input, select, textarea');
