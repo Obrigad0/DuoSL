@@ -427,12 +427,3 @@ DuoSL never calls, so no key is required to run any of this.
 
 </details>
 
-## Credits
-
-The recognition pipeline, the trained model and the preprocessing come from
-[tobp03/live-asl-translation](https://github.com/tobp03/live-asl-translation),
-released under the Apache 2.0 license, whose text is kept in `utils/LICENSE`.
-
-The model is trained on the
-[ASL Citizen dataset](https://www.microsoft.com/en-us/research/project/asl-citizen/)
-by Microsoft Research.
