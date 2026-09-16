@@ -19,10 +19,29 @@ const VERDICT_HOLD_MS = 900;     // durata dell'anello colorato dopo un tentativ
 const CHEAT_AFTER_WRONG = 3;     // vedi _cheatAllows()
 const CHEAT_CHANCE = 0.5;
 
-/** Occhiello sopra il segno: diverso sugli step "a memoria" (demo coperta). */
+/**
+ * Quando un segno non passa, la lezione va avanti da sola invece di lasciare
+ * l'utente bloccato. Al terzo errore il messaggio smette gia' di cambiare: il
+ * quarto e' il primo tentativo dopo che l'app ha fatto capire che si e' fermi.
+ * Il messaggio resta il tempo di leggerlo e di scegliere "Keep trying".
+ */
+const MOVE_ON_AFTER_WRONG = 4;
+const MOVE_ON_DELAY_MS = 4000;
+
+/** Si promette che il segno torna solo se nella lezione torna davvero. */
+const MOVE_ON = {
+  later: "Tricky one! Let's move on, we'll come back to it in a bit.",
+  library: "Tricky one! Let's move on, you can try it again later from your library.",
+};
+
+/**
+ * Occhiello sopra il segno. "retry" e' il passo a memoria riproposto: l'ultima
+ * volta quel segno non e' riuscito, quindi torna con la demo scoperta.
+ */
 const EYEBROW = {
   normal: 'Your turn, make this sign',
   memory: 'From memory, no demo this time',
+  retry: "Let's try this one again",
 };
 
 const $ = (id) => document.getElementById(id);
@@ -38,6 +57,17 @@ const WRONG_MESSAGES = [
   { text: 'Try again: drop your hands out of frame, then watch the demo closely.',
     speak: true },
   { text: 'Not yet, take your time and watch the demo closely.', speak: false },
+];
+
+/**
+ * La stessa scala per i passi a memoria ancora coperti. La demo non si vede,
+ * quindi invece di dire di guardarla si ricorda che si puo' scoprire; non la si
+ * scopre al posto dell'utente, deve deciderlo lui.
+ */
+const WRONG_MESSAGES_COVERED = [
+  WRONG_MESSAGES[0],
+  { text: 'Try again: drop your hands out of frame. Stuck? Tap Show me the sign.', speak: true },
+  { text: 'Not yet, take your time. The demo is one tap away if you need it.', speak: false },
 ];
 
 /** Frasi del conto alla rovescia: una a caso, per non renderlo meccanico. */
@@ -95,6 +125,8 @@ export class LessonView {
       help: $('lesson-help'),
 
       eyebrow: document.querySelector('#lesson-screen .prompt-eyebrow'),
+      eyebrowText: $('eyebrow-text'),
+      eyebrowIcon: document.querySelector('#lesson-screen .eyebrow-icon'),
       word: $('sign-word'),
       goBack: $('go-back'),
       speakWord: $('speak-word'),
@@ -129,6 +161,7 @@ export class LessonView {
       feedback: $('feedback'),
       fbText: $('fb-text'),
       fbSkip: $('fb-skip'),
+      fbStay: $('fb-stay'),
       fbTimer: $('fb-timer'),
 
       debug: $('debug-panel'),
@@ -169,6 +202,15 @@ export class LessonView {
     this.hintTimer = null;
     this.verdictTimer = null;
 
+    // Avanzamento automatico: in corso finche' il timer non e' null.
+    this.moveOnTimer = null;
+    this.stayOnStep = false;      // "Keep trying" scelto su questo step
+
+    // Progressi salvati all'ingresso: servono ai passi a memoria per sapere
+    // com'e' andata l'ultima volta con un segno imparato in un'altra lezione.
+    this.savedStatus = new Map();
+    this.savedLoaded = false;
+
     this.preloader = document.createElement('video');
     this.preloader.preload = 'auto';
     this.preloader.muted = true;
@@ -190,8 +232,10 @@ export class LessonView {
     // finito il countdown. Solo qui, cosi' "Practice again" e le riconnessioni
     // non lo ripropongono a meta' lezione.
     this.introPending = true;
-    this.isFirstLesson = Progress.load()
+    const saved = Progress.load();
+    this.isFirstLesson = saved
       .then((d) => !!(d && d.lessons && d.lessons[0] && d.lessons[0].id === this.lessonId));
+    saved.then((d) => this._onSavedProgress(d));
 
     this.el.screen.classList.remove('hidden');
     this._resetUi();
@@ -220,7 +264,7 @@ export class LessonView {
     this.revealed.clear();
     this.el.demoHidden.hidden = true;
     this.el.demoHide.hidden = true;
-    this.el.eyebrow.textContent = EYEBROW.normal;
+    this._setEyebrow('normal');
 
     this.el.demo.classList.remove('mirrored');
     this.el.demoMirror.setAttribute('aria-pressed', 'false');
@@ -276,6 +320,9 @@ export class LessonView {
     this.stepStatus = this.steps.map(() => 'pending');
     this.skipped.clear();
     this.revealed.clear();        // si riparte da capo: le demo tornano coperte
+    // Il giro appena finito ha aggiornato la libreria: i ripassi di segni di
+    // altre lezioni devono vederla aggiornata.
+    Progress.load().then((d) => this._onSavedProgress(d));
     this.currentIndex = 0;
     this.resumeAt = 0;
     this.captures = 0;
@@ -315,7 +362,7 @@ export class LessonView {
     on(this.el.exit, 'click', () => this.onExit());
     on(this.el.voiceToggle, 'click', () => this._toggleVoice());
     on(this.el.debugToggle, 'click', () => this._toggleDebug());
-    on(this.el.help, 'click', () => tutorial.open());
+    on(this.el.help, 'click', () => this._openHelp());
     on(this.el.pauseBtn, 'click', () => this._togglePause());
 
     on(this.el.goBack, 'click', () => this._goBack());
@@ -332,6 +379,7 @@ export class LessonView {
     on(this.el.demoMirror, 'click', () => this._toggleDemoMirror());
 
     on(this.el.fbSkip, 'click', () => this._skip());
+    on(this.el.fbStay, 'click', () => this._keepTrying());
 
     // Se il video finisce fuori loop (sorgente senza loop pulito), riparte.
     on(this.el.demo, 'ended', () => this.el.demo.play().catch(() => {}));
@@ -406,6 +454,18 @@ export class LessonView {
     if (msg.attempted_display) {
       this.captures++;
 
+      // Il messaggio "andiamo avanti" e' gia' a schermo. Un gesto giusto
+      // arrivato all'ultimo vince lui e annulla lo skip, altrimenti il server
+      // avanzerebbe due volte (per il successo e per lo skip). Uno sbagliato
+      // non cambia niente: la lezione sta gia' andando avanti.
+      if (this.moveOnTimer) {
+        if (!msg.correct) {
+          this._updateDebug({ last: msg.last_gloss, conf: msg.last_confidence });
+          return;
+        }
+        this._cancelMoveOn();
+      }
+
       if (msg.correct) {
         this.wrongStreak = 0;
         // Il server ha gia' avanzato: this.currentIndex e' ancora lo step
@@ -439,10 +499,16 @@ export class LessonView {
         return;
       }
 
+      if (this.wrongStreak >= MOVE_ON_AFTER_WRONG && !this.stayOnStep) {
+        this._startMoveOn();
+        return;
+      }
+
       this._setCamState('wrong');
       this._hideHint();
 
-      const level = WRONG_MESSAGES[Math.min(this.wrongStreak, WRONG_MESSAGES.length) - 1];
+      const messages = this._demoConcealed() ? WRONG_MESSAGES_COVERED : WRONG_MESSAGES;
+      const level = messages[Math.min(this.wrongStreak, messages.length) - 1];
       this._showFeedback({
         kind: 'wrong',
         text: level.text,
@@ -521,8 +587,13 @@ export class LessonView {
   // ------------------------------------------------------------- rendering
 
   _renderStep(msg) {
+    // Un "andiamo avanti" in sospeso appartiene allo step vecchio: lasciato
+    // correre salterebbe quello nuovo.
+    if (this.moveOnTimer) this._cancelMoveOn();
+
     this.currentIndex = msg.step_index;
     this.wrongStreak = 0;
+    this.stayOnStep = false;
 
     for (let i = 0; i < this.stepStatus.length; i++) {
       if (i < this.currentIndex && this.stepStatus[i] === 'pending') {
@@ -834,13 +905,51 @@ export class LessonView {
     return !!(step && step.from_memory && step.demo_url);
   }
 
+  /**
+   * Com'e' andata l'ultima volta col segno dello step i.
+   *
+   * Un passo a memoria da' per scontato che quel segno tu l'abbia gia' fatto:
+   * se l'ultima volta e' stato saltato, chiederlo senza demo non ha senso. Si
+   * guarda prima la lezione in corso, l'occorrenza piu' recente, poi i progressi
+   * salvati, per i ripassi di segni imparati in altre lezioni.
+   *
+   * @returns {'ok'|'failed'|'new'|'unknown'}
+   */
+  _lastTime(i = this.currentIndex) {
+    const step = this.steps[i];
+    if (!step) return 'unknown';
+
+    for (let j = i - 1; j >= 0; j--) {
+      if (this.steps[j].gloss !== step.gloss) continue;
+      if (this.stepStatus[j] === 'done') return 'ok';
+      if (this.stepStatus[j] === 'skipped') return 'failed';
+      break;   // non ancora raggiunto: decidono i progressi salvati
+    }
+
+    if (!this.savedLoaded) return 'unknown';
+    const status = this.savedStatus.get(step.gloss);
+    return status === KNOWN ? 'ok' : status === REVIEW ? 'failed' : 'new';
+  }
+
+  /** Il passo a memoria copre davvero la demo. Senza dati si resta come prima. */
+  _coversDemo(i = this.currentIndex) {
+    if (!this._isMemoryStep(i)) return false;
+    const last = this._lastTime(i);
+    return last === 'ok' || last === 'unknown';
+  }
+
+  /** Passo a memoria riproposto: l'ultima volta non e' riuscito, torna con la demo. */
+  _isRetryStep(i = this.currentIndex) {
+    return this._isMemoryStep(i) && this._lastTime(i) === 'failed';
+  }
+
   /** Vero quando la demo dello step corrente e' coperta in questo momento. */
   _demoConcealed() {
-    return this._isMemoryStep() && !this.revealed.has(this.currentIndex);
+    return this._coversDemo() && !this.revealed.has(this.currentIndex);
   }
 
   _reveal() {
-    if (!this._isMemoryStep()) return;
+    if (!this._coversDemo()) return;
     this.revealed.add(this.currentIndex);
     this._applyDemoVisibility();
     this.el.demo.currentTime = 0;
@@ -849,7 +958,7 @@ export class LessonView {
   }
 
   _conceal() {
-    if (!this._isMemoryStep()) return;
+    if (!this._coversDemo()) return;
     const fromButton = document.activeElement === this.el.demoHide;
     this.revealed.delete(this.currentIndex);
     this.el.demo.pause();
@@ -871,11 +980,39 @@ export class LessonView {
     this.el.demoPlay.disabled = !usable;
     this.el.demoSlow.disabled = !usable;
     this.el.demoMirror.disabled = !usable;
-    this.el.demoHide.hidden = !(usable && this._isMemoryStep());
+    this.el.demoHide.hidden = !(usable && this._coversDemo());
 
-    // Solo se cambia davvero: e' un aria-live, non va riletto ad ogni step.
-    const eyebrow = concealed ? EYEBROW.memory : EYEBROW.normal;
-    if (this.el.eyebrow.textContent !== eyebrow) this.el.eyebrow.textContent = eyebrow;
+    this._setEyebrow(concealed ? 'memory' : this._isRetryStep() ? 'retry' : 'normal');
+  }
+
+  /** La riga sopra al segno. Il testo si riscrive solo se cambia: e' un aria-live. */
+  _setEyebrow(kind) {
+    const text = EYEBROW[kind];
+    if (this.el.eyebrowText.textContent !== text) this.el.eyebrowText.textContent = text;
+    const retry = kind === 'retry';
+    // toggleAttribute e non .hidden: l'icona e' un elemento SVG.
+    this.el.eyebrowIcon.toggleAttribute('hidden', !retry);
+    this.el.eyebrow.classList.toggle('is-retry', retry);
+  }
+
+  /** Progressi salvati arrivati o ricaricati: la regola dei passi a memoria li usa. */
+  _onSavedProgress(d) {
+    this.savedStatus = new Map(((d && d.signs) || []).map((x) => [x.gloss, x.status]));
+    this.savedLoaded = !!d;
+    if (!this._ac || this.completed || !this.steps[this.currentIndex]) return;
+    this._syncMemoryStep();
+  }
+
+  /**
+   * Riallinea la demo dello step a schermo se la regola cambia esito dopo che
+   * lo step e' gia' stato disegnato: i progressi possono arrivare un attimo dopo.
+   * Nel frattempo il passo resta coperto, come prima.
+   */
+  _syncMemoryStep() {
+    this._applyDemoVisibility();
+    if (!this.el.demo.getAttribute('src')) return;
+    if (this._demoConcealed()) this.el.demo.pause();
+    else if (this.el.demo.paused && !this.userPausedDemo) this.el.demo.play().catch(() => {});
   }
 
   _skip() {
@@ -886,6 +1023,53 @@ export class LessonView {
     if (step) Progress.markSign(step.gloss, REVIEW, this.lessonId);
     this._hideFeedback();
     if (this.session) this.session.skip();
+  }
+
+  /* ------------------------------------- avanti da soli quando ci si blocca */
+
+  /**
+   * Dopo MOVE_ON_AFTER_WRONG errori di fila la lezione va avanti da sola, con
+   * lo stesso esito di uno Skip. Il messaggio non da' la colpa a chi fa il
+   * segno, perche' spesso e' il modello a sbagliare, e promette un ritorno solo
+   * se il segno ricompare davvero piu' avanti nella lezione.
+   */
+  _startMoveOn() {
+    const step = this.steps[this.currentIndex];
+    const comesBack = !!step && this.steps.some(
+      (x, j) => j > this.currentIndex && x.gloss === step.gloss);
+
+    this._hideHint();
+    this._showFeedback({
+      kind: 'neutral',
+      text: comesBack ? MOVE_ON.later : MOVE_ON.library,
+      stay: true,
+      autoMs: MOVE_ON_DELAY_MS,
+    });
+    // La voce tace dal terzo errore: qui torna, per dire perche' il segno cambia.
+    Speech.say("Let's move on");
+
+    this.moveOnTimer = setTimeout(() => {
+      this.moveOnTimer = null;
+      this._skip();
+    }, MOVE_ON_DELAY_MS);
+  }
+
+  /** Aiuto aperto a mano: come la pausa, annulla un "andiamo avanti" in corso. */
+  _openHelp() {
+    if (this.moveOnTimer) this._cancelMoveOn();
+    tutorial.open();
+  }
+
+  _cancelMoveOn() {
+    clearTimeout(this.moveOnTimer);
+    this.moveOnTimer = null;
+    this._hideFeedback();
+  }
+
+  /** L'utente vuole insistere: su questo step la lezione non riprova ad andare avanti da sola. */
+  _keepTrying() {
+    this._cancelMoveOn();
+    this.stayOnStep = true;
   }
 
   // ------------------------------------------------------- stato del video
@@ -937,10 +1121,11 @@ export class LessonView {
 
   // ---------------------------------------------------------- feedback
 
-  _showFeedback({ kind, text, again = false, skip = false, autoMs = 0 }) {
+  _showFeedback({ kind, text, again = false, skip = false, stay = false, autoMs = 0 }) {
     this.el.feedback.dataset.kind = kind;
     this.el.fbText.textContent = text;
     this.el.fbSkip.hidden = !skip;
+    this.el.fbStay.hidden = !stay;
     this.el.feedback.hidden = false;
 
     this.el.fbTimer.classList.remove('run');
@@ -1018,18 +1203,13 @@ export class LessonView {
     this.el.word.textContent = 'All done';
     this._setCamState('idle');
 
+    const signs = this._summarySigns();
     this._showCover({
       icon: '#i-check',
       tone: 'ok',
       title: 'Lesson complete',
-      text: `${done} of ${this.totalSteps} signs recognised.`,
-      signs: this.steps
-        .map((s, i) => ({ ...s, originalIndex: i }))
-        .filter(s => !s.from_memory)
-        .map(s => ({
-          label: s.display_text || s.gloss || s.display,
-          ok: this.stepStatus[s.originalIndex] === 'done'
-        })),
+      text: `${signs.filter((x) => x.ok).length} of ${signs.length} signs recognised.`,
+      signs,
       // Scambiati apposta: "Back to lessons" e' l'azione piena, "Practice
       // again" quella secondaria.
       actions: [
@@ -1040,6 +1220,23 @@ export class LessonView {
 
     Speech.say('Lesson complete');
     if (this.session) this.session.stop();
+  }
+
+  /**
+   * Un elemento per segno, nell'ordine in cui compare la prima volta, riuscito
+   * se almeno una delle sue occorrenze e' riuscita: un segno saltato e fatto
+   * bene quando e' tornato conta come fatto. E' la regola della libreria, dove
+   * un segno si promuove e non retrocede. L'etichetta e' `display`: gli step
+   * arrivano dal server senza `display_text`.
+   */
+  _summarySigns() {
+    const bySign = new Map();
+    this.steps.forEach((x, i) => {
+      const entry = bySign.get(x.gloss) || { label: x.display || x.gloss, ok: false };
+      if (this.stepStatus[i] === 'done') entry.ok = true;
+      bySign.set(x.gloss, entry);
+    });
+    return [...bySign.values()];
   }
 
   // ------------------------------------------------------------ diagnostica
@@ -1112,7 +1309,7 @@ export class LessonView {
         break;
       case 'h': case 'H':
         if (onControl) return;
-        tutorial.open();
+        this._openHelp();
         break;
     }
   }
@@ -1122,6 +1319,7 @@ export class LessonView {
     clearTimeout(this.hintTimer);    this.hintTimer = null;
     clearTimeout(this.verdictTimer); this.verdictTimer = null;
     clearTimeout(this.cdTimer);      this.cdTimer = null;
+    clearTimeout(this.moveOnTimer);  this.moveOnTimer = null;
   }
 
   // ------------------------------------------------------------- sviluppo
@@ -1173,6 +1371,11 @@ export class LessonView {
         }
       },
       back: () => this._goBack(),
+
+      /** Finge dei progressi salvati senza toccare data/progress.json: __duosl.saved({ HOW2: 'review' }) */
+      saved: (map = {}) => this._onSavedProgress({
+        signs: Object.entries(map).map(([gloss, status]) => ({ gloss, status })),
+      }),
 
       /** Attiva/disattiva il flag "a memoria" sullo step corrente senza toccare il JSON. */
       memory: (on = true) => {

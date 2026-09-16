@@ -529,11 +529,20 @@ button { font: inherit; color: inherit; }
 }
 
 .prompt-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: var(--t-sm);
   font-weight: 700;
   letter-spacing: .02em;
   color: var(--text-mute);
 }
+.eyebrow-icon { width: 14px; height: 14px; flex: none; }
+
+/* Segno riproposto: l'ultima volta non e' riuscito e torna con la demo. Il
+   colore del marchio invece del grigio lo fa leggere come una funzione, non
+   come un ripiego. */
+.prompt-eyebrow.is-retry { color: var(--brand-700); }
 
 /* Il segno vive dentro un badge colorato, non come testo nero su fondo
    chiaro: cosi' non si legge come "una scritta" ma come il compito da
@@ -1065,6 +1074,8 @@ button { font: inherit; color: inherit; }
 .fb-glyph .icon { width: 26px; height: 26px; display: none; }
 .feedback[data-kind="correct"] .fb-ok { display: block; }
 .feedback[data-kind="wrong"]   .fb-no { display: block; }
+/* Si va avanti da soli: ne' successo ne' errore, grigio e freccia. */
+.feedback[data-kind="neutral"] .fb-next { display: block; }
 
 .fb-text { flex: 1; font-size: var(--t-md); font-weight: 600; }
 .fb-actions { display: flex; gap: var(--s-2); flex: none; }

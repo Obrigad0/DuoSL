@@ -192,7 +192,10 @@
       <!-- aria-live: sui segni "a memoria" questa riga e' la consegna, ed e'
            l'unico posto dove si dice che la demo manca di proposito. Cambia
            solo quando cambia davvero lo stato, non ad ogni step. -->
-      <p class="prompt-eyebrow" aria-live="polite">Your turn, make this sign</p>
+      <p class="prompt-eyebrow" aria-live="polite">
+        <svg class="icon eyebrow-icon" aria-hidden="true" hidden><use href="#i-retry"></use></svg>
+        <span id="eyebrow-text">Your turn, make this sign</span>
+      </p>
       <div class="prompt-row">
         <!-- Indietro e altoparlante fanno coppia, uno per lato del badge.
              Fuori dal badge avrebbero spostato il segno dal centro, che e' il
@@ -306,10 +309,13 @@
       <span class="fb-glyph" aria-hidden="true">
         <svg class="icon fb-ok"><use href="#i-check"></use></svg>
         <svg class="icon fb-no"><use href="#i-retry"></use></svg>
+        <svg class="icon fb-next"><use href="#i-arrow-right"></use></svg>
       </span>
       <p class="fb-text" id="fb-text"></p>
       <div class="fb-actions">
         <button id="fb-skip" class="btn subtle" type="button" hidden>Skip this sign</button>
+        <!-- Solo mentre la lezione sta per andare avanti da sola -->
+        <button id="fb-stay" class="btn subtle" type="button" hidden>Keep trying</button>
       </div>
       <span class="fb-timer" id="fb-timer" aria-hidden="true"></span>
     </div>
