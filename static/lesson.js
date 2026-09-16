@@ -199,6 +199,7 @@ export class LessonView {
 
     this.thresholds = { enter: 1.4, exit: 0.9 };  // sovrascritte da lesson_meta
     this.advanceTimer = null;
+    this.advanceAction = null;    // cosa fa il passaggio in sospeso: vedi _scheduleAdvance
     this.hintTimer = null;
     this.verdictTimer = null;
 
@@ -482,12 +483,19 @@ export class LessonView {
         Speech.say('Correct');
 
         // msg.target_* qui e' gia' lo step successivo.
-        this.advanceTimer = setTimeout(() => {
-          this.advanceTimer = null;
+        this._scheduleAdvance(() => {
           this._hideFeedback();
           if (msg.completed) this._showCompletion();
           else this._renderStep(msg);
-        }, ADVANCE_DELAY_MS);
+        });
+        return;
+      }
+
+      // Un tentativo sbagliato che arriva a lezione in pausa e' una cattura
+      // partita un istante prima di premere il pulsante: non conta, altrimenti
+      // potrebbe perfino far andare avanti la lezione mentre e' ferma.
+      if (this.paused) {
+        this._updateDebug({ last: msg.last_gloss, conf: msg.last_confidence });
         return;
       }
 
@@ -619,7 +627,7 @@ export class LessonView {
     // pausa: l'anello non deve tornare "ready" in quei casi.
     if (!this.troubled && !this.paused && !this._coverVisible()) this._setCamState('ready');
 
-    Speech.say(label);
+    if (!this.paused) Speech.say(label);
     this._runCountdown();
   }
 
@@ -727,29 +735,55 @@ export class LessonView {
   /* ------------------------------------------------------- pausa lezione */
 
   _togglePause() {
-    this.paused = !this.paused;
-
-    this.el.stage.classList.toggle('is-paused', this.paused);
-    this.el.pauseBtn.setAttribute('aria-pressed', String(this.paused));
-    this.el.pauseLabel.textContent = this.paused ? 'Resume lesson' : 'Pause lesson';
-    this.el.demoHints.hidden = !this.paused;
-
-    if (this.session) this.session.setPaused(this.paused);
-
     if (this.paused) {
-      this._endCountdown();
-      this._clearTimers();
-      this._hideFeedback();
-      this._hideHint();
-      this._setCamState('paused');
-      Speech.stop();
-      this.userPausedDemo = false;
-      // Se lo step e' "a memoria" e non e' stato scoperto resta coperto: la
-      // pausa non deve aggirare l'esercizio.
-      if (!this._demoConcealed()) this.el.demo.play().catch(() => {});
-    } else {
+      this._exitPause();
       this._setCamState('ready');
+      return;
     }
+
+    // Dopo un segno giusto il server e' gia' sul successivo, e a schermo il
+    // passaggio arriva dopo il "Nice!". Va portato a termine prima di fermarsi:
+    // cancellarlo lasciava a schermo il segno appena fatto mentre la lezione
+    // chiedeva gia' quello dopo.
+    this._flushAdvance();
+    // Se era l'ultimo segno, il passaggio ha appena chiuso la lezione.
+    if (!this._canPause()) return;
+
+    this.paused = true;
+    this.el.stage.classList.add('is-paused');
+    this.el.pauseBtn.setAttribute('aria-pressed', 'true');
+    this.el.pauseLabel.textContent = 'Resume lesson';
+    this.el.demoHints.hidden = false;
+    if (this.session) this.session.setPaused(true);
+
+    this._endCountdown();
+    this._clearTimers();
+    this._hideFeedback();
+    this._hideHint();
+    this._setCamState('paused');
+    Speech.stop();
+    this.userPausedDemo = false;
+    // Se lo step e' "a memoria" e non e' stato scoperto resta coperto: la
+    // pausa non deve aggirare l'esercizio.
+    if (!this._demoConcealed()) this.el.demo.play().catch(() => {});
+  }
+
+  /**
+   * Esce dalla pausa senza decidere lo stato della camera: lo usa anche chi
+   * chiude la lezione o mostra un problema, e li' l'anello e' gia' deciso.
+   */
+  _exitPause() {
+    this.paused = false;
+    this.el.stage.classList.remove('is-paused');
+    this.el.pauseBtn.setAttribute('aria-pressed', 'false');
+    this.el.pauseLabel.textContent = 'Pause lesson';
+    this.el.demoHints.hidden = true;
+    if (this.session) this.session.setPaused(false);
+  }
+
+  /** La pausa ha senso solo mentre la lezione sta girando davvero. */
+  _canPause() {
+    return !this.completed && !this.troubled && !this._coverVisible() && !!this.session;
   }
 
   /* -------------------------------------------------- conto alla rovescia */
@@ -832,11 +866,10 @@ export class LessonView {
     });
     Speech.say('Correct');
 
-    this.advanceTimer = setTimeout(() => {
-      this.advanceTimer = null;
+    this._scheduleAdvance(() => {
       this._hideFeedback();
       if (this.session) this.session.skip();
-    }, ADVANCE_DELAY_MS);
+    });
   }
 
   _watchAgain() {
@@ -876,13 +909,42 @@ export class LessonView {
         && !!this.session;
   }
 
-  /** Sul primo segno il pulsante resta al suo posto e si spegne. */
+  /**
+   * I pulsanti che dipendono da dove si e' nella lezione. La freccia sul primo
+   * segno resta al suo posto e si spegne.
+   */
   _syncNav() {
     const can = this._canGoBack();
     this.el.goBack.disabled = !can;
     this.el.goBack.title = this.currentIndex > 0
       ? 'Previous sign (\u2190)'
       : 'This is the first sign of the lesson';
+
+    // A lezione finita, con la camera bloccata o la connessione caduta non c'e'
+    // niente da mettere in pausa: il pulsante sparisce senza liberare il suo
+    // posto, e se la lezione era in pausa ne esce.
+    const canPause = this._canPause();
+    this.el.pauseBtn.disabled = !canPause;
+    if (!canPause && this.paused) this._exitPause();
+  }
+
+  /**
+   * Il passaggio al segno dopo un verdetto positivo. Si tiene l'azione e non
+   * solo il timer, cosi' chi deve fermarsi (la pausa) la porta a termine subito
+   * invece di cancellarla.
+   */
+  _scheduleAdvance(action) {
+    clearTimeout(this.advanceTimer);
+    this.advanceAction = action;
+    this.advanceTimer = setTimeout(() => this._flushAdvance(), ADVANCE_DELAY_MS);
+  }
+
+  _flushAdvance() {
+    const action = this.advanceAction;
+    clearTimeout(this.advanceTimer);
+    this.advanceTimer = null;
+    this.advanceAction = null;
+    if (action) action();
   }
 
   /** Segna uno step come riuscito, togliendolo dai saltati se ci era finito. */
@@ -1315,7 +1377,7 @@ export class LessonView {
   }
 
   _clearTimers() {
-    clearTimeout(this.advanceTimer); this.advanceTimer = null;
+    clearTimeout(this.advanceTimer); this.advanceTimer = null; this.advanceAction = null;
     clearTimeout(this.hintTimer);    this.hintTimer = null;
     clearTimeout(this.verdictTimer); this.verdictTimer = null;
     clearTimeout(this.cdTimer);      this.cdTimer = null;

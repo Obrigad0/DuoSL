@@ -661,6 +661,9 @@ button { font: inherit; color: inherit; }
               border-color var(--dur-fast) var(--ease);
 }
 .pause-btn:hover { border-color: var(--n-300); color: var(--text); }
+/* Quando non c'e' niente da mettere in pausa (lezione finita, camera bloccata,
+   connessione caduta) sparisce ma tiene il suo posto: niente salti del palco. */
+.pause-btn:disabled { visibility: hidden; }
 .pause-btn .icon { width: 15px; height: 15px; }
 .pause-btn .icon-play { display: none; }
 
